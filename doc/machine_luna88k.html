@@ -1,0 +1,427 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <title>GXemul: Luna 88K emulation</title>
+  <meta name="robots" content="noarchive,nofollow,noindex">
+</head>
+<body style="font-family : sans-serif;">
+
+<!-- 10 lines header.  -->
+
+<h1>GXemul: Luna 88K emulation</h1>
+<p>
+
+<a href="./">Back to the index.</a>
+
+<!--
+
+Copyright (C) 2006-2021  Anders Gavare.  All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+3. The name of the author may not be used to endorse or promote products
+   derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGE.
+
+-->
+
+
+
+<p>This emulation mode attempts to emulate an OMRON Luna-88K workstation. Note that these
+were based on <a href="https://en.wikipedia.org/wiki/Motorola_88000">Motorola
+88000</a> processors, not 68000.
+
+<p>Originally, they ran OMRON's UniOS. But also of historical interest:
+<ul>
+	<li>Carnegie-Mellon University's MACH was partially
+		<a href="https://www.cbronline.com/news/omron_together_with_motorola_donate_40_workstations_to_carnegie_mellon_university/">developed
+		on these machines</a>. Some <a href="http://www.cs.cmu.edu/~jmcm/omron/luna88k.html">source code still exists (luna88k.MK84.tar.Z)</a>
+		but I have not found any ready-to-run binary distribution
+		of MACH/luna88k.
+
+	<p>
+	<li><a href="http://cap-lore.com/CapTheory/upenn/">KeyKOS</a> ran on
+		<a href="http://www.cap-lore.com/CapTheory/KK/88K.html">88K</a>,
+		and in particular
+		<a href="http://cap-lore.com/CapTheory/upenn/NanoKernel/NanoKernel.html#RTFToC21">KeyNIX</a> (a UNIX-layer on top of KeyKOS,
+		supposedly capable of running X11).
+</ul>
+
+<p>In modern times, the only still maintained and freely available operating
+system for these machines is <a href="https://www.openbsd.org/luna88k.html">OpenBSD/luna88k</a>.
+
+<p>GXemul emulates the following devices:
+<ul>
+	<li>88100 CPU  (Only a single CPU works well, up to 4 can be experimented with.)
+	<li>Interrupt controller and parts of the system board
+	<li>Serial console
+	<li>Keyboard and mouse
+	<li>Graphical monochrome framebuffer, 1280 x 1024
+	<li>Lance Ethernet
+	<li>SCSI
+</ul>
+
+<p>well enough to run OpenBSD. It is highly likely that running
+other operating systems (or the original OMRON firmware) will trigger
+bugs of various kinds in the device implementations.
+
+<p><b>NOT</b> emulated yet:
+<ul>
+	<li>Front panel LCD display
+	<li>Parallel port
+	<li><i>Color</i> framebuffers
+</ul>
+
+<!-- TODO: 64 MB luna88k, 112 MB luna88k2, max 256 MB in emulator  -->
+
+<p><a href="openbsd-luna88k-20210130.png"><img src="openbsd-luna88k-20210130-small.png"></a>
+<a href="openbsd-luna88k-20210209.png"><img src="openbsd-luna88k-20210209-small.png"></a>
+<a href="openbsd-luna88k-20210220.png"><img src="openbsd-luna88k-20210220-small.png"></a>
+<a href="20210328-openbsd-luna88k-inside-openbsd-luna88k.png"><img src="20210328-openbsd-luna88k-inside-openbsd-luna88k-small.png"></a>
+
+<p><small>The last of the screenshots above shows the OpenBSD/luna88k kernel booting
+inside GXemul, compiled inside emulated OpenBSD/luna88k running in GXemul on
+a FreeBSD/amd64 host.</small>
+
+<p>There are a couple of ways to run and/or install OpenBSD in the emulator.
+
+<p>
+<ul>
+	<li><a href="#openbsdluna88klive">From a "live" harddisk image</a>
+	<li><a href="#openbsdluna88k">Via network installation</a>
+	<li><a href="#openbsdluna88knfs">With root-on-nfs</a>
+	<li><a href="#openbsdluna88kmp">Experimenting with the MultiProcessor kernel</a>
+</ul>
+
+
+
+<p><br>
+<a name="openbsdluna88klive"></a>
+<h3>OpenBSD/luna88k from a "live" harddisk image:</h3>
+
+<p>Kenji Aoyama has made available full harddisk images from a real
+OpenBSD installation. Download the latest such harddisk image and
+<tt>boot</tt> program from
+<a href="http://www.nk-home.net/~aoyama/liveimage/">http://www.nk-home.net/~aoyama/liveimage/</a>,
+and start the emulator like this:
+
+<p>
+<pre>
+	<b>gxemul -e luna-88k -d liveimage-luna88k-raw-20201206.img boot</b>
+</pre>
+
+<p>To run with a graphical framebuffer, add <tt>-X</tt> to the command line.
+
+<p>To shut down the machine gracefully, run <tt>reboot</tt> as root.
+
+
+
+
+<p><br>
+<a name="openbsdluna88k"></a>
+<h3>OpenBSD/luna88k network installation:</h3>
+
+<p>To install OpenBSD, you first need to create an empty harddisk image
+onto which the operating system will be installed:
+
+<p><pre>
+	<b>dd if=/dev/zero of=obsd_luna88k.img bs=1024 count=1 seek=5500000</b>
+</pre>
+
+<p>Then download the ramdisk kernel, a regular kernel, and the boot program:
+<ul>
+	<li><a href="https://ftp.nluug.nl/OpenBSD/6.8/luna88k/bsd.rd">https://ftp.nluug.nl/OpenBSD/6.8/luna88k/bsd.rd</a>
+	<li><a href="https://ftp.nluug.nl/OpenBSD/6.8/luna88k/bsd">https://ftp.nluug.nl/OpenBSD/6.8/luna88k/bsd</a>
+	<li><a href="https://ftp.nluug.nl/OpenBSD/6.8/luna88k/boot">https://ftp.nluug.nl/OpenBSD/6.8/luna88k/boot</a>
+</ul>
+
+<p>Start the emulator like this, and install as if you were doing a network
+(http) install on a real machine:
+<pre>
+	<b>gxemul -e luna-88k -d obsd_luna88k.img bsd.rd</b>
+</pre>
+
+<p>For networking configuration, enter IPv4 address 10.0.0.1, netmask 255.0.0.0,
+and skip IPv6 configuration. Default route and DNS nameserver should both be 10.0.0.254.
+
+<p><b>NOTE:</b> Doing a network install is currently really really slow.
+It is so slow that it will probably say "stalled" in the download progress
+reporting, but just leave it on and eventually it will have downloaded
+everything.
+
+<p>Finally, once the installation finishes, reboot the emulated machine and
+start again using either the boot loader, or using the regular kernel:
+<pre>
+	<b>gxemul -e luna-88k -d obsd_luna88k.img boot</b>
+
+	or
+
+	<b>gxemul -e luna-88k -d obsd_luna88k.img bsd</b>
+</pre>
+
+<p>Using the boot loader mimics how a real machine would start up OpenBSD
+on the luna88k. Using the regular kernel has the advantage that it includes
+symbols, which are useful when debugging the kernel.
+
+<p>To run with a graphical framebuffer, add <tt>-X</tt> to the command line.
+
+<p>To shut down the machine gracefully, run <tt>reboot</tt> as root.
+
+
+
+
+<p><br>
+<a name="openbsdluna88knfs"></a>
+<h3>OpenBSD/luna88k with root-on-nfs:</h3>
+
+<p>Back when GXemul did not emulate the SCSI controller in the LUNA88K machine,
+the only way to run OpenBSD/luna88k was using root-on-nfs. These instructions
+can still be used, if you want to do it that way.
+
+<p>
+Another emulated machine must then be used as the nfs root server, and the
+emulated LUNA88K machine must boot as a <a href="http://man.openbsd.org/diskless">diskless</a>
+client. To make matters even more complicated, the OpenBSD/luna88k 6.8 RAMDISK
+kernel has support for Ethernet, but it does not seem to have a driver for
+nfs included or at least it doesn't work in the emulator. Therefore, a <i>separate</i>
+OpenBSD ramdisk kernel, e.g. for OpenBSD/sgi, needs to be used to run the final
+step of the root-on-nfs installation.
+
+<p>Let's get started.
+
+<p>
+<ol>
+  <li>First of all, the "<tt>nfs server</tt>" machine must be set up.
+	<a href="machine_decstation.html#netbsdpmaxinstall">Install NetBSD/pmax 8.0 from CDROM</a>,
+	perform a default install (without X11) from CDROM without configuring the
+	network, but add a 4000 MB <tt>/tftpboot</tt> partition when
+	configuring the disk!
+  <p>
+  <li>On the host, download the OpenBSD distribution:
+<p><table border="0"><tr><td><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td><pre>wget http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/base68.tgz
+wget http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/comp68.tgz
+wget http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/xbase68.tgz
+wget http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/xfont68.tgz
+wget http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/xserv68.tgz
+wget http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/xshare68.tgz
+</pre></td></tr></table>
+  <li>Start the emulation of the DECstation NFS server using this command line:
+<p><table border="0"><tr><td><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td><pre>gxemul -xe 3max -d nbsd_pmax.img -d base68.tgz -d comp68.tgz -d xbase68.tgz -d xfont68.tgz -d xserv68.tgz -d xshare68.tgz
+</pre></td></tr></table>
+and enter the following commands to configure the server for NFS serving and
+extract the OpenBSD distribution:
+<table border="0"><tr><td><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td><pre>
+<b>echo hostname=server &gt;&gt; /etc/rc.conf
+echo ifconfig_le0=\"inet 10.0.0.2\" &gt;&gt; /etc/rc.conf
+echo nameserver 10.0.0.254 &gt;&gt; /etc/resolv.conf
+echo 10.0.0.254 &gt; /etc/mygate
+echo /tftpboot -maproot=root -alldirs 10.0.0.3 &gt; /etc/exports
+echo rpcbind=YES &gt;&gt; /etc/rc.conf
+echo nfs_server=YES &gt;&gt; /etc/rc.conf
+echo mountd=YES &gt;&gt; /etc/rc.conf
+echo bootparamd=YES &gt;&gt; /etc/rc.conf
+printf "client root=10.0.0.2:/tftpboot swap=10.0.0.2:/tftpboot/swap\n" &gt; /etc/bootparams
+echo "00:00:0a:10:20:30 client" &gt; /etc/ethers
+echo 10.0.0.3 client &gt; /etc/hosts
+
+cd /tftpboot
+tar xzf /dev/sd1c
+tar xzf /dev/sd2c
+tar xzf /dev/sd3c
+tar xzf /dev/sd4c
+tar xzf /dev/sd5c
+tar xzf /dev/sd6c
+
+tar zxfv var/sysmerge/etc.tgz
+tar zxfv var/sysmerge/xetc.tgz
+
+chmod 1777 tmp
+
+dd if=/dev/zero of=swap bs=1024 count=262144
+
+echo inet 10.0.0.3 > /tftpboot/etc/hostname.le0
+chmod 640 /tftpboot/etc/hostname.le0
+echo 10.0.0.254 > /tftpboot/etc/mygate
+echo nameserver 10.0.0.254 > /tftpboot/etc/resolv.conf
+echo 127.0.0.1 client localhost > /tftpboot/etc/hosts
+
+echo 10.0.0.2:/tftpboot / nfs rw 0 0 > /tftpboot/etc/fstab
+echo 10.0.0.2:/tftpboot/swap none swap sw,nfsmntpt=/swap >> /tftpboot/etc/fstab
+
+halt</b>
+</pre></td></tr></table>
+  <li>Download the OpenBSD/luna88k GENERIC, MULTIPROCESSOR, and RAMDISK kernels:<pre>
+	<a href="http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd">http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd</a>
+	<a href="http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd.mp">http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd.mp</a>
+	<a href="http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd.rd">http://ftp.eu.openbsd.org/pub/OpenBSD/6.8/luna88k/bsd.rd</a>
+
+</pre>
+  <li>Create a configuration file called <tt>config_client</tt>:
+<table border="0"><tr><td><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td><pre>
+<font color="#2020cf">!  Configuration file for running OpenBSD/luna88k diskless with
+!  a NetBSD/pmax machine as the nfs server.
+!
+!  This config file is for the client.</font>
+
+<b>net(
+	add_remote("localhost:12444")   </b>! the server<b>
+	local_port(12445)               </b>! the client<b>
+)
+
+machine(
+	name("client machine")
+	serial_nr(1)
+
+        type("luna88k")
+        subtype("luna-88k")
+	! use_x11(1)
+
+	! For multiprocessor experiments:
+	! ncpus(4)
+        ! load("bsd.mp")
+
+        ! load("bsd.rd")
+        load("bsd")
+)
+</b>
+</pre></td></tr></table>
+	... and another configuration file for the server,
+	<tt>config_server</tt>:
+<table border="0"><tr><td><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td><pre>
+<b>net(
+	local_port(12444)               </b>! the server<b>
+	add_remote("localhost:12445")   </b>! the client<b>
+)
+
+machine(
+	name("nfs server")
+	serial_nr(2)
+
+        type("dec")
+        subtype("5000/200")
+
+        disk("nbsd_pmax.img")
+)
+</b>
+</pre></td></tr></table>
+
+  <li>Download an OpenBSD/sgi RAMDISK kernel (only used to run MAKEDEV):<pre>
+	<a href="http://ftp.eu.openbsd.org/pub/OpenBSD/6.7/sgi/bsd.rd.IP32">http://ftp.eu.openbsd.org/pub/OpenBSD/6.7/sgi/bsd.rd.IP32</a>
+
+</pre>
+
+  <li>Create a configuration file called <tt>config_client_sgi</tt>:
+<table border="0"><tr><td><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td><pre>
+<font color="#2020cf">!  Configuration file for running OpenBSD/sgi diskless with
+!  a NetBSD/pmax machine as the nfs server.
+!
+!  This config file is for the client.</font>
+
+<b>net(
+	add_remote("localhost:12444")   </b>! the server<b>
+	local_port(12445)               </b>! the client<b>
+)
+
+machine(
+	name("client machine")
+	serial_nr(1)
+
+        type("sgi")
+        subtype("o2")
+	use_x11(1)
+	memory(1024)
+
+        load("bsd.rd.IP32")
+        ! load("bsd.IP32")
+)
+</b>
+</pre></td></tr></table>
+
+  <li>Boot the "nfs server" and the OpenBSD/sgi
+	"client machine" as two separate emulator instances:<pre>
+	in one xterm:
+	<b>gxemul @config_server</b>
+
+	and then, in another xterm:
+	<b>gxemul @config_client_sgi</b>
+
+</pre>
+
+  <li>In the emulated OpenBSD/sgi client, type 's' for Shell and run these commands:
+<table border="0"><tr><td><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td><pre>
+<b>ifconfig mec0 10.0.0.3; route add default 10.0.0.254
+mount -v 10.0.0.2:/tftpboot /mnt
+cd /mnt/dev; ./MAKEDEV all; cd /; umount /mnt
+halt -p</b>
+</pre></td></tr></table>
+  <li>Finally, run the luna88k client:<pre>
+	<b>gxemul @config_client</b>
+
+</pre>
+	When asked about root device, enter <tt>le0</tt>.
+</ol>
+
+
+<p><br>
+If you want to run with the graphical framebuffer, uncomment the
+<tt>use_x11(1)</tt> line in <tt>config_client</tt> first.
+Unfortunately, Xorg lacks a driver for <tt>wsfb</tt> in OpenBSD/luna88k
+6.8, which is needed.
+
+<p>You can extract the files
+<pre>./usr/X11R6/lib/modules/drivers/wsfb_drv.la
+./usr/X11R6/lib/modules/drivers/wsfb_drv.so
+</pre>
+<p>from the <a href="http://ftp.eu.openbsd.org/pub/OpenBSD/6.7/luna88k/xserv67.tgz">OpenBSD
+6.7 xserver</a> distribution file, and use them even if the
+rest of the OS is version 6.8. If you have extracted the files above,
+then start X by running <tt>startx</tt>.
+
+
+
+
+
+<p><br>
+<a name="openbsdluna88kmp"></a>
+<h3>OpenBSD/luna88k MultiProcessor experiments:</h3>
+
+<p>You can experiment with the multiprocessor kernel (bsd.mp), with up to
+4 emulated CPUs. It is not as stable as running single-processor, though.
+Also, the emulator itself is not multithreaded, so all CPUs are emulated
+using a single host processor, so a higher number of emulated CPUs means
+a slower total emulation speed.
+
+<p><a href="20210222-openbsd-luna88k-mp-1.png"><img src="20210222-openbsd-luna88k-mp-1-small.png"></a>
+<a href="20210222-openbsd-luna88k-mp-2.png"><img src="20210222-openbsd-luna88k-mp-2-small.png"></a>
+
+<p>Assuming you have done the root-on-nfs setup detailed above, uncomment
+the bsd.mp file in the configuration file, and set ncpus to the
+number of cpus (1 through 4).
+
+<p>If you want to start the emulator from the command line with multiple
+processors, use the <tt>-n</tt> option.
+
+
+
+
+</body>
+</html>
+

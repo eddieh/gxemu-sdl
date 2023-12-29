@@ -1,0 +1,836 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <title>GXemul: TODO list</title>
+  <meta name="robots" content="noarchive,nofollow,noindex">
+</head>
+<body style="font-family : sans-serif;">
+
+<!-- 10 lines header.  -->
+
+<h1>TODO list for GXemul</h1>
+<p>
+
+<a href="./">Back to the index.</a>
+
+
+<p><br>
+Here are some things, in no specific order, that I'd like to fix or
+implement in GXemul. Some items in this list are perhaps already fixed.
+
+<ul>
+	<li><a href="#shortlist">Current "short-list" (unsorted)</a>
+	<li><a href="#cpu">CPU related</a>
+	<li><a href="#machine">Machine/device related</a>
+	<li><a href="#misc">Misc.</a>
+	<li><a href="#release">Release checklist</a>
+</ul>
+
+
+
+<p><br>
+<b><a name="shortlist">Current "short-list" (unsorted)</a></b>
+
+<p><pre>
+<font color="blue">bool-ify stuff:</font>
+	o) int -> bool for things like cpu->running
+
+<font color="blue">debugmsg-related and non-exit(1) stuff (mostly):</font>
+	o) src/cpu/:
+		o) debugmsg:ify at least 'cpu' and 'exception' subsystem messages.
+		o) Fix some more exit(1) calls to cpu->running = false and make
+			sure that they break out of the dyntrans loop.
+	o) src/net/:
+		o) debugmsg:ify all src/net/.
+	o) Add an example of the "verbosity" command to the Debugger section of
+		the documentation?
+		Or wait until breakpoints are implemented?
+		e.g. verbosity disk debug		<-- print all messages, but
+		     breakpoint subsystem disk warn	<-- break only for warn and error.
+
+<font color="blue">Build problems:</font>
+	o) Building a default build on my Linux machine currently fails with duplicate definitions from
+		Linux' bits/socket.h being "extern inlined" twice? (configure --debug works fine though)
+
+<font color="blue">Misc.:</font>
+	o) Try X11 grabbing with multiple host displays? ssh with X11 forwarding from laptop?
+		with multiple mouse pointers, _which_ mouse pointer is grabbed?
+	o) Try all guest OSes in the documentation, cleaning up debugmsg related stuff as I go along.
+	o) Instead of doing cpu->running = 0 in some places, and foreach cpu in the machine
+		in some other places, then the main emul loop should check if ANY
+		cpu goes from running to non-running, and treat that as a reason to
+		halt the machine. there's really no reason to continue running the
+		other CPUs if there was an error in one of them.
+		ALSO: if about to enter single step, or single step, is true, then
+			abort too.
+		AND: if support for debugmsg breakpoints is to be added later,
+			then the break-out-of-dyntrans check needs to be done
+			not only on memory references, but potentially after
+			ALL debugmsg printouts!
+	o) Apply Chris Berry's patch for tap device use on Linux.
+	o) Try tap networking on FreeBSD host (e.g. using netbsd/pmax guest).
+		Performance better than when using simulated NAT?
+	o) Breakpoints etc:
+		Helper for setting/adding the break-out-of-dyntrans value to ninstr.
+			cpu_dyntrans_abort_loop(cpu)?
+		Debugmsg breakpoint should then:
+			call cpu_dyntrans_abort_loop(cpu) if cpu != NULL,
+			set about-to-enter-single-step
+			print "subsystem breakpoint" for non-errors,
+			print "aborting" for errors.
+		ABORT_DT =   ninstr & XXX
+		if (ABORT_DT) { SYNCH_PC; next ic = nothing; }
+		step/continue after hitting a breakpoint must work.
+		counts for breakpoints, only break "after x hits".
+		CTRL-T should print breakpoint counts.
+		-T can be implemented as a "warning level breakpoint" for the
+			memory subsystem.
+		-K should implicitly be set if any breakpoints (subsystem 
+			or regular) are used.
+		Always break on debugmsg errors!
+		Document the break-out-of-dyntrans mechanism.
+	o) When using e.g. "-E alpha" and there was more than one subtype, then _list_
+   	   them instead of just complaining "Maybe you forgot the -e command line option".
+	o) Try using profil() for very basic runtime profiling?
+	o) GXsatellite -- Gavare's eXperimental Stand-Alone Test Environment
+	   for Low-Level Interactive Testing of Emulators. base on YCX5; start with testmips.
+</pre></p>
+
+
+
+<p><br>
+<b><a name="cpu">CPU related</a></b>
+<pre>
+Dyntrans / general:
+	o)  Idling:
+		o)  How about showing "has_been_idling" in the status printout?
+			Consider removing has_been_idling alltogether? (now that the
+			number of cycles is kept low...)
+		o)  Turn some "chars" into "bools".
+	x)  SMP: INVALIDATION should cause translations in _all_ cpus to be
+	    invalidated in the machine, e.g. on a write to a write-protected page
+	    (containing code)
+
+	    Horrible hack:
+
+	                cpu_create_or_reset_tc(cpus[i]);
+			cpus[i]->invalidate_translation_caches(
+	                    cpus[i], 0, INVALIDATE_ALL);
+
+	    in machine_run() seems to make Luna88K run stable (?) with 4 CPUs.
+	    Real solution may be to just implement a loop over all CPUs in
+	    memory_rw when storing data to pages?
+
+	o)  Per-arch overrides for whether to print symbols when executing in userspace?
+		e.g. MIPS is OK since symbols are at kseg0.
+		e.g. M88K is not OK, since userland and supervisor are the same numeric values.
+	o)  Why indirection via 		cpu->cpu_family->dumpinfo(cpu, verbose);
+		why not just cpu->dumpinfo?
+	x)  Try to make the vaddr fix O(1) again instead of O(n), if it
+		is possible to see if a non-canonical address has been
+		inserted into the caches. In other words, keep track of	
+		whether a full O(n) seach is really needed or not.
+	x)  For 32-bit emulation modes, that have emulated TLBs: tlbindex
+	    arrays of mapped pages? Things to think about:
+		x)  Only 32-bit mode! (64-bit => too much code)
+		x)  One array for global pages, and one array _PER ASID_,
+		    for those archs that support that. On M88K, there should
+		    be one array for userspace, and one for supervisor, etc.
+		x)  Larger-than-4K-pages must fill several bits in the array.
+		x)  No TLB search will be necessary.
+		x)  Total host space used, for 4 KB pages: 1 MB per table,
+		    i.e. 65 MB for 32-bit MIPS, 2 MB for M88K, if one byte
+		    is used as the tlb index.
+		x)  (The index is actually +1, so that 0 means no hit.)
+	x)  "Merge" the cur_physpage and cur_ic_page variables/pointers to
+	    one? I.e. change cur_ic_page to cur_physpage.ic_page or something.
+	x)  Instruction combination collisions? How to avoid easily...
+	x)  superh -- no hostpage for e.g. 0x8c000000. devices as ram!
+	x)  Think about how to do both SHmedia and SHcompact in a reasonable
+	    way! (Or AMD64 long/protected/real, for that matter.)
+	x)  68K emulation; think about how to do variable instruction
+	    lengths across page boundaries.
+	x)  Dyntrans with valgrind-inspired memory checker. (In memory_rw,
+	    it would be reasonably simple to add; in each individual fast
+	    load/store routine = a lot more work, and it would become
+	    kludgy very fast.)
+		o)  Mark every address with bits which tell whether or not the address
+		    has been written to.
+		o)  What should happen when programs are loaded?  Text/data, bss (zero
+		    filled). But stack space and heap is uninitialized.
+		o)  Uninitialized local variables:
+			A load from a place on the stack which has not previously
+			been stored to => warning. Increasing the stack pointer using
+			any available means should reset the memory to uninitialized.
+		o)  If calls to malloc() and free() can be intercepted:
+			o)  Access to a memory area after free() => warning.
+			o)  Memory returned by malloc() is marked as not-initialized.
+			o)  Non-passive, but good to have: Change the argument
+			    given to malloc, to return a slightly larger memory
+			    area, i.e.  margin_before + size + margin_after,
+			    and return the pointer  + margin_before.
+			    Any access to the margin_before or _after space results
+			    in warnings. (free() must be modified to free the
+			    actually allocated address.)
+	x)  Dyntrans with SMP... lots of work to be done here.
+	x)  Dyntrans with cache emulation... lots of work here as well.
+	x)  Remove the concept of base RAM completely; it would be more
+	    generic to allow RAM devices to be used "anywhere".
+	o)  dev_mp doesn't work well with dyntrans yet
+	o)  In general, IPIs, CAS, LL/SC etc must be made to work with dyntrans
+	x)  Redesign/rethink the delay slot mechanism used for e.g. MIPS,
+		so that it caches a translation (that is, an instruction
+		word and the instr_call it was translated to the last
+		time), so that it doesn't need to do slow
+		to_be_translated for each end of page?
+	x)  Program Counter statistics:
+		Per machine? What about SMP? All data to the same file?
+		A debugger command should be possible to use to enable/
+		disable statistics gathering.
+		Configuration file option!
+	x)  Breakpoints:
+		o) Physical vs virtual addresses!
+		o) 32-bit vs 64-bit sign extension for MIPS, and others?
+	x)  16-bit encodings? (MIPS16, ARM Thumb, etc)
+	x)  Lots of other stuff: see src/cpus/README_DYNTRANS
+	x)  Native code generation backends... think _carefully_ about this.
+	    (Not a priority right now.)
+
+ARM:
+	o)  Big endian does not really work: loads and stores are little endian!
+	o)  More THUMB disassembly?
+	o)  More THUMB execution.
+	o)  0xf "condition" execution: see http://engold.ui.ac.ir/~nikmehr/Appendix_B2.pdf
+	o)  Android devices.
+	o)  See netwinder_reset() in NetBSD; the current "an internal error
+	    occured" message after reboot/halt is too ugly.
+	o)  Generic ARM "wait"-like instruction?
+	o)  try to get netbsd/evbarm 3.x or 4.x running (iq80321)
+	o)  netbsd/iyonix? the i80321 device currently tells netbsd that
+	    RAM starts at 0xa0000000, but that is perhaps not correct for the iyonix.
+	o)  make the xscale counter registers (ccnt) work
+	o)  make the ata controller usable for FreeBSD!
+	o)  Debian/cats crashes because of unimplemented coproc stuff. fix this?
+
+i960:
+	Reimplement after the C++ to C switch:
+	x. i960 CPU: Disassembly of at least i960CA instructions.
+	x. HP700/RX machine skeleton.
+	x. bout file loader?
+	x. uCLinux: CycloneVH machine for running uCLinux/i960?
+	x. uCLinux: http://www.ibiblio.org/lou/old/ViewStation/ ?
+
+M88K:
+	o)  Instruction combinations for:
+		memset, memcpy, memmove, strlen, bzero?
+	o)  OpenBSD/luna88k idle loop => detect and idle the host.
+
+MIPS:
+	o) Double-check R10000 vs R4400 TLB specifics:
+ 	   https://techpubs.jurassic.nl/manuals/hdwr/developer/R10K_UM/sgi_html/t5.Ver.2.0.book_347.html
+	o)  MIPS: ehb detection, cop0 write -> tlb instructions.
+	o)  ALU operations (typically addiu, or, etc) can be hardcoded/inlined for common
+		register pairs or even triples. Classic generate_blahblah and an array.
+		Reduces memory accesses for common ALU instructions.
+	o)  Profile and make newer instruction combinations for up-to-date versions of NetBSD
+	    (full install, building GXemul inside NetBSD, etc). Make sure to go through all
+		common function cores such as memset, memcpy, memmove, strlen, strcmp, memcmp,
+		and idle functions, for both R3000 and R4400 etc.
+	o)  Floating point exception correctness. Compare to real hardware!
+	o)  Nicer MIPS status bits in register dumps.
+	o)  Some more work on opcodes.
+		x) MIPS64 revision 2.
+			o)  Find out which actual CPUs implement the rev2 ISA!
+			o)  DINS, DINSM, DINSU etc
+			o)  DROTR32 and similar MIPS64 rev 2 instructions,
+			    which have a rotation bit which differs from
+			    previous ISAs.
+	o)  NetBSD has a patch for NOFPU flag for certain CPUs. Investigate and apply if correct.
+	o)  Dyntrans: Count register updates are probably not 100% correct yet.
+	o)  Coprocessor 1x (i.e. 3) should cause cp1 exceptions, not 3?
+		(See http://lists.gnu.org/archive/html/qemu-devel/2007-05/msg00005.html)
+	o)  R4000 and others:
+		x)  watchhi/watchlo exceptions, and other exception
+		    handling details
+	o)  MIPS 5K* have 42 physical address bits, not 40/44?
+	o)  R10000 and others:  (R12000, R14000 ?)
+		x)  The code before the line
+			/*  reg[COP0_PAGEMASK] = cpu->cd.mips.coproc[0]->tlbs[0].mask & PAGEMASK_MASK;  */
+		    in cpu_mips.c is not correct for R10000 according to
+		    Lemote's Godson patches for GXemul. TODO: Go through all
+		    register definitions according to http://techpubs.sgi.com/library/tpl/cgi-bin/getdoc.cgi/hdwr/bks/SGI_Developer/books/R10K_UM/sgi_html/t5.Ver.2.0.book_263.html#HEADING334
+		    and make sure everything works with R10000.
+		    Then test with OpenBSD/sgi?
+		x)  Entry LO mask (as above).
+		x)  memory space, exceptions, ...
+		x)  use cop0 framemask for tlb lookups [maybe already working correctly?]
+		    (http://techpubs.sgi.com/library/tpl/cgi-bin/getdoc.cgi/hdwr/bks/SGI_Developer/books/R10K_UM/sgi_html/t5.Ver.2.0.book_284.html)
+
+POWER/PowerPC:
+	x)  Fix DECR timer speed, so it matches the host.
+	x)  NetBSD/prep 3.x triggers a possible bug in the emulator:
+	    <wdc_exec_command(0xd005e514,0xd60cdd30,0,8,..)>
+	      <ata_get_xfer(0,0xd60cdd30,0,8,..)>
+	        <0x26c550(&ata_xfer_pool,2,0,8,..)>
+	        <0x35c71c(0x3f27000,0,52,8,..)>
+	      <ata_exec_xfer(0xd005e4c8,0x3f27000,0,13,..)>
+	        <atastart(0xd005e4c8,0x3f27000,0,13,..)>
+	          <__wdccommand_start(0xd005e4c8,0x3f27000,0,13,..)>
+	            <bsw1(&prep_isa_io_space_tag,0x800001f6,0,176,..)>
+		[ wdc: write to SDH: 0xb0 (sectorsize 2, lba=1, drive 1, head 0) ]
+	            <wdcwait(0xd005e4c8,72,64,0xbb8,..)>
+	              <0x198120(0xd005e4c8,72,64,0xbb8,..)>
+	                <bsr1(&prep_isa_io_space_tag,0,0,0xbb8,..)>
+	                <delay(100,0,0,0xbb8,..)>
+	    Note: <bsr1(&prep_isa_io_space_tag,0,0,0xbb8,..)>
+	x)  PPC optimizations; instr combs
+	x)  64-bit stuff: either Linux on G5, or perhaps some hobbyist
+		version of AIX? (if there exists such a thing)
+	x)  macppc: adb controller; keyboard (for framebuffer mode)
+	x)  make OpenBSD/macppc work (PCI controller stuff)
+	x)  Floating point exception correctness.
+	x)  Alignment exceptions.
+	x)  Boot args for gxemul -xeg4 -d opendarwin-6.6.2.ppc.cdr ? http://web.mit.edu/darwin/www/
+
+RISC-V:
+	Add a RISC-V skeleton again; possibly using 16-bit base encoding, treating
+		32-bit instructions as "two slots". Special case, not as
+		efficient as using full 32-bit instructions as the base case, but could work.
+		4 KB page => 2 K slots plus several at the end, since a long
+		instruction would have its 'next' instruction point way outside
+		the page.
+		Use the latest RISC-V specs, and make sure to check for
+		implementation C (Compact), I (Integer), F etc.
+
+SuperH:
+	x)  Auto-generation of loads/stores! This should get rid of at least
+	    the endianness check in each load/store.
+	x)  Experiment with whether or not correct ITLB emulation is
+	    actually needed. (20070522: I'm turning it off today.)
+	x)  SH4 interrupt controller:
+		x)  MASKING should be possible!
+	x)  SH4 UBC (0xff200000)
+	x)  SH4 DMA (0xffa00000): non-dreamcast-PVR modes
+	x)  Store queues can copy 32 bytes at a time, there's no need to
+	    copy individual 32-bit words. (Performance improvement.)
+	    (Except that e.g. the Dreamcast TA currently receives using
+	    32-bit words... hm)
+	x)  SH4 BSC (Bus State Controller)
+	x)  Instruction tracing should include symbols for branch targets,
+	    and so on, to make the output more human readable.
+	x)  SH3-specific devices: Pretty much everything!
+	x)  NetBSD/evbsh3, hpcsh! Linux?
+	x)  Floating point speed!
+	x)  Floating point exception correctness.
+		E.g. fipr and the other "geometric" instructions should
+		throw an exception if the "precision" bit is wrong
+		(since the geometric instructions loose precision).
+		See the manual about this!
+	x)  Exceptions for unaligned load/stores. OpenBSD/landisk uses
+	    this mechanism for its reboot code (machine_reset).
+</pre>
+
+
+
+<p><br>
+<b><a name="machine">Machine/device related</a></b>
+<pre>
+General:
+	o)  Go through the ,NULL arguments to dev_ram_init, 
+		and see if more suitable names can be used!
+
+Algor:
+	o)  Other models than the P5064?
+	o)  PCI interrupts... needed for stuff like the tlp NIC?
+
+ARC:
+	x)  NetBSD/arc 2.0 uses the ASC SCSI controller in a way which GXemul
+	    cannot yet handle. (NetBSD 1.6.2 works ok.) (Possibly a problem
+	    in NetBSD itself, http://mail-index.netbsd.org/source-changes/
+	    2005/11/06/0024.html suggests that.)
+	    NetBSD 4.x seems to work? :)
+
+DECstation:
+	o)  Running two Sprite machines in one emul config file fails; perhaps
+		static vars are used in the PROM emulation code. Fix this.
+		Right now, using separate config files for each machine is
+		necessary.
+	o)  Figure out how to run multiple Sprite machines and make them talk
+		to each other. Starting point for experimentation:
+
+		Set up machine a:
+			Machine name, eg 'ernie' (): a
+
+		On A: (login as root)
+
+		printf "2\tds5000\tb.my.domain\tb\n" >> /etc/spritehosts
+		printf "\tether\t10:20:30:00:00:20\t10.0.0.2\n" >> /etc/spritehosts
+		netroute -f /etc/spritehosts
+		echo "10.0.0.2 b.my.domain b" >> /etc/hosts
+		rm /etc/gateway
+		echo "gw ether 60:50:40:30:20:10 10.0.0.254" > /etc/gateway
+		sync
+		shutdown
+
+		Set up machine b:
+			Machine name, eg 'ernie' (): b
+
+		On B: (login as root)
+
+		rm /etc/spritehosts
+		printf "1\tds5000\ta.my.domain\ta\t1\n" > /etc/spritehosts
+		printf "\tether\t10:20:30:00:00:10\t10.0.0.1\n" >> /etc/spritehosts
+		printf "2\tds5000\tb.my.domain\tb\t2\n" >> /etc/spritehosts
+		printf "\tether\t10:20:30:00:00:20\t10.0.0.2\n" >> /etc/spritehosts
+		echo "10.0.0.1 a.my.domain a" >> /etc/hosts
+		cd /
+		mv ROOT ROOTrenamed
+		sync
+		shutdown
+
+		Start up machine 'a' again, wait until the login prompt is shown.
+		Then start up machine 'b'.
+
+		But it doesn't quite work yet; b does not see A's "/".
+
+Dreamcast:
+	x)  Try to make the ROM from my real Dreamcast boot correctly.
+	x)  PVR:  Lots of stuff. See dev_pvr.c.
+		x)  DMA to non-0x10000000
+		x)  Textures...
+		x)  Make it fast! if possible
+	x)  G2 DMA
+	x)  SPU: Sound emulation (ARM cpu).
+	x)  LAN adapter (dev_mb8696x.c).  NetBSD root-on-nfs.
+	x)  Better GDROM support
+	x)  Modem
+	x)  PCI bridge/bus?
+	x)  Maple bus:
+		x)  Correct controller input
+		x)  Mouse input
+	x)  Software emulation of BIOS calls:
+		x)  GD-ROM emulation: Use the GDROM device.
+		x)  Use the VGA font as a fake ROM font. (Better than
+		    nothing.)
+	x)  Make as many as possible of the KOS examples run!
+	x)  More homebrew demos/games.
+	x)  VME processor emulation? "(Sanyo LC8670 "Potato")" according to
+	    Wikipedia, LC86K87 according to Comstedt's page. See
+	    http://www.maushammer.com/vmu.html for a good description of
+	    the differences between LC86104C and the one used in the VME.
+
+HPCmips:
+	x)  MIPS hibernate instruction => make the exit from the emulator nicer!
+	x)  Clock? Is it running at correct speed?
+	x)  Mouse/pad support! :)
+	x)  A NIC? (As a PCMCIA device?)
+
+LUNA-88K:
+	autoboot of OpenBSD: boot_unit and boot_partition in NVRAM should be
+		set to the actual boot device; currently hardcoded to 0,0.
+	luna88k bootblock loader:
+		o load binary from UFS filesystem (i.e. a partition given by an
+			offset into a disk image).
+		o) if no bootstring (boot file) is specified, then perhaps try a few
+			from a list? "vmunix", "boot".
+	Color framebuffer
+	SCSI: OpenBSD/luna88k warns about
+		probe(spc0:0:0): Check Condition (error 0) on opcode 0x0
+		for non-connected devices. (Just a warning though.)
+	Cursor keys in the graphical framebuffer window? (Works with pckbd for SGI?)
+	separate out some devices into their own files? (reuse TOD clock for example)
+	Front-side LCD panel:
+		One idea is to make the framebuffer window taller, and show
+		the LCD text in the lower left-hand corner, in a way mimicing
+		a real machine.
+	SMP stability: possibly instabilities are related to clearing
+		translation cache on page writes (for ALL cpus, not just the
+		one doing the page write).
+	LUNA-88K2 machine: check OpenBSD source code to see where there are
+		differences in devices and registers etc.
+
+Malta:
+	o)  Try FreeBSD/malta: https://wiki.freebsd.org/FreeBSD/MipsEmulation
+	o)  Malta can perhaps have up to 2 GB RAM? Try same hack as for the SGI O2.
+	o)  Reconfigurable PCI memory space would be nice (just like SGI O2).
+
+MVME88K / mvme187:
+	OpenBSD 4.5 works ok with -x, but interrupts are lost (?) when not using -x.
+
+PReP:
+	x)  Clock time! ("Bad battery blah blah")
+
+SGI O2:
+	ARCBIOS output should go to some terminal; right now (for e.g. SGI O2), it goes to the main window.
+
+	If/when booting from SGI disk images is really meaningful (i.e. not just that it
+	   correctly loads the OSLoader, but can boot an entire OS): update the man page
+	   and other documentation regarding booting directly from SGI disk images.
+
+	differences between real hardware and NetBSD's header files?
+
+		RED/GREEN LED: 1 on real hardware turns off, not on!
+
+		nr of bits for the tile ptr
+
+		20008 vs 30008 in crmfb?
+
+		CRMFB_CMAP_OVL = 0x00051400. should be 0x54400? for "color map 17" for overlays?
+
+		crime time bit mask?
+
+		NetBSD's crmfb.c crmfb_set_palette says rgb in reverse maybe?:
+			val = (r &lt;&lt; 8) | (g &lt;&lt; 16) | (b &lt;&lt; 24)
+
+	clocks:
+		Both NetBSD and OpenBSD drift over time.
+
+	bus_pci / O2's pci:
+		reconfigurable memory space redirect?
+		ahc scsi controller! this will be very time consuming.
+		http://mail-index.netbsd.org/port-sgimips/2015/09/24/msg000711.html
+			has some "pcictl pci0 dump -d 1" output which may be worth comparing against.
+
+	ds2502_get_eaddr: ds2502_read_rom failed!
+		PROM complains during bootup. Needed to get further with bootp() diskless booting.
+		Onewire protocol that depends on microsecond timing?
+
+	netbsd starts in "enter pathname of shell" mode; should start netbooting
+		in a more automated fashion?
+
+	netbsd randomly quits 'startx' without showing anything?
+		sometimes also randomly places windows differently.
+
+	ps2 8242:
+		openbsd's X11 doesn't detect keyboard/mouse?
+
+	PROM in GXemul says "SGI-CRM, Rev B", but my real O2 says Rev C?
+
+	graphics:
+		allow other resolutions than 1280x1024? netbsd seems to support it (?).
+
+		netbsd maybe still triggers some acceleration bugs when moving X11 windows?
+		
+		horrible_getputpixel:
+			GBE_CMODE_RGB10 etc from openbsd's header file?
+			performance?
+
+		actually emulate "pipeline" and detect pipeline overruns,
+			i.e. require guest OSes to wait? but then, when to
+			execute commands in the pipeline? (low-prio)
+			get -w 0xb5004000:
+						LEVEL	RD_PTR	WR_PTR	BUF_START
+				0x1e029a68	00	29	29	28
+				0x1e02baea	00	2b	2b	2a
+				0x1e03befa	00	3b	3b	3a
+				0x1e029a68	00	29	29	28
+				0x1e00a289	00	0a	0a	09
+				0x1e03df7c	00	3d	3d	3c
+				0x1e00003f	00	00	00	3f
+				0x1e02fbee	00	2f	2f	2e
+				0x1e02cb2b	00	2c	2c	2b
+				0x1e00b2ca	00	0b	0b	0a
+				0x1e008207	00	08	08	07
+				0x1e = all idle
+
+		i2c vga data, for NetBSD etc.
+		3D graphics? i.e. depth buffers, triangles, etc.
+
+	audio?
+		would be the first audio related thing in gxemul...
+
+	VICE?
+
+	video? probably too complicated.
+
+	IRIX? Networking? SCSI? Currently panics due to root vfs not available.
+
+Test machines:
+	o)  Fix dev_cons.c DEV_CONS_HALT so that it halts the cpus gracefully,
+	    i.e. usage in demo code should be:
+		for (;;) {
+			halt();
+		}
+	o) testmips: Add support for more than 256 MB ram, e.g. by adding
+		"actual RAM" at the 1 GB offset. A 32 bit machine can thus use
+		3 GB, no limit on 64 bit machines. Low 256 MB can be considered
+		a mirror of first 256 MB of RAM.
+	o)  dev_fb 2D acceleration functions, to make dev_fb useful for simple graphical OSes:
+		x) block fill and copy
+		x) draw characters (from the built-in font)?
+	o)  dev_fb input device? mouse pointer coordinates and buttons
+		(allow changes in these to cause interrupts as well?)
+	o)  More demos/examples.
+</pre>
+
+
+
+<p><br>
+<b><a name="misc">Misc.</a></b>
+<pre>
+Breakpoints with config files doesn't seem to work correctly? (luna88k?)
+
+Breakpoints on subsystem messages?
+	breakpoint subsystem		<- show any subsystem breakpoints
+	breakpoint subsystem disk warn	<- break on warnings and errors, but
+						not on info and debug.
+	breakpoint subsystem disk off	<- turn off breakpoint
+	Effect: enter single stepping when such a message is printed.
+		NOTE: Only check breakpoint AFTER check for "is enough"? Because
+			there may be if("is enough") spread out through the
+			code anyway.
+			In other words: when doing
+				breakpoing subsystem disk info
+			if the current verbosity level of disk is 'warn', then
+			implicitly raise it to 'info' and tell the user about it.
+	NEED TO CHECK about-to-enter-single-step and/or single-step after
+		memory_rw calls, to break out of the dyntrans loop.
+		Implement helper for these cases? cpu->running == 0 is just
+		one reason to break then.
+
+	Currently, breakpoints are just an array of string and addresses,
+	inside a machine. (Because addresses are conceptually bound to the _memory_ in
+	that machine.)
+
+	breakpoints that just print hit count, rather than break? Or better:
+		all breakpoints can keep track of hit count
+		and then there could be a setting on how long to run until
+			actually breakin. e.g.
+				1 = always break
+				inf = never break, just count
+				100 = run 100 then break.
+		implementationwise:
+			int64_t hits_until_break
+			int64_t hitcount
+			int64_t next_hitcount_to_break_on
+		CTRL-T could show breakpoint hit counts.
+
+CD Image file support:
+	x)  Support CD formats that contain more than 1 track, e.g.
+	    CDI files (?). These can then contain a mixture of e.g. sound
+	    and data tracks, and booting from an ISO filesystem path
+	    would boot from [by default] the first data track.
+	    (This would make sense for e.g. Dreamcast CD images, or
+	    possibly other live-CD formats.)
+
+Clocks and timers:
+	x)  Fix the PowerPC DECR interrupt speed! (MacPPC and PReP speed, etc.)
+	x)  DON'T HARDCODE 100 HZ IN cpu_mips_coproc.c!
+	x)  NetWinder timeofday is incorrect! Huh? grep -R for ta_rtc_read in
+	    NetBSD sources; it doesn't seem to be initialized _AT ALL_?!
+	x)  Cobalt TOD is incorrect!
+	x)  Go through all other machines, one by one, and fix them.
+
+Components:
+	_MAYBE_ it would be possibly to unify the CPU and device concepts, so
+	that they are just arbitrary components in a machine... like the C++
+	framework was. machine_run currently run a) instructions from cpus, and
+	b) ticks from devices. There is no big reason why these could not be
+	made the same concept.
+
+	Components (busses, CPUs, devices, machines) would be a tree, like
+	in the C++ framework.
+
+	Component tree dump should then be the same during startup and
+	for the emul / machine debugger commands. Compare e.g. the C++ framework's
+		  mainbus0
+		  |-- cpu0  (i960CA, 25 MHz)
+		  |   \-- cache  etc...
+		  |-- ram0  (2 MB repeated for 256 MB at offset 0x30000000)
+		  |-- ram1  (8 MB repeated for 16 MB at offset 0x40000000)
+		  \-- rom0  (512 KB at offset 0xfff80000)
+	to
+		machine: 
+		    device at 0x0030000000: ram (dyntrans R/W)
+		    device at 0x0040000000: ram (dyntrans R/W)
+		    device at 0x0041000000: ram (dyntrans R/W)
+		    device at 0x00fff80000: ram (dyntrans R/W)
+		    model: HP 700/RX
+		    cpu: i960CA
+		    memory: 1 MB
+
+	If there are multiple memories in a machine, a CPU searches for its
+	memory like in the C++ framework: first to a parent (e.g. a mainbus)
+	and then to a memory on that bus.
+
+Debugger:
+	Helpers for splitting up into arguments/words.
+
+	Helpers for using abbreviations/tab completion for arguments? Allow
+		e.g. "b sh" to mean "breakpoint show". Right now, "show" needs
+		to be written out in full.
+
+	"u pc+0x40" works but not "u pc + 0x40" with spaces!
+
+	More complex expressions, and Unit tests for them.
+
+	Extend the
+		put [b|h|w|d|q] addr, data    modify emulated memory contents
+	command with a "s" (string) mode, where data is a string. Also
+	"z" which puts a nul-terminated string in memory. It should put the
+	string there one byte at a time.
+	
+		put s 0x80008000, "apa"
+
+	or
+
+		put z 0x80008000, "apa"
+
+
+	Extend the debugger with a "find" command as well, similar to
+	put but with a range?
+
+		find [b|h|w|d|q|s|z] startaddr, endaddr, data
+
+	Command for launching a separate terminal for output from a specified subsystem?
+		(Or a flag to the verbosity command?)
+
+	"step call" ? running like single-step, but instead of one instruction, it
+		runs until the next function call (or function return)? (with implicit
+		function trace printout turned on...)
+
+	Tab completion for symbols? That would help...
+
+	CTRL-T is already supported when single-stepping.
+		o) Also support CTRL-T while executing in main emul loop?
+		Should CTRL-T be checked in console.c, or in emul.c?
+
+Disk image options:
+	Command line option for forcing fsync on each disk image write; see
+	do_fsync in src/disk/diskimage.c
+
+Documentation:
+	Dyntrans: Mention how to break out of the dyntrans loop: cpu->running = 0
+	and the nothing instruction, and how nr of instructions is counted then.
+
+	Update the man page about disk boot block loading to not explicitly list the
+	supported machine types.
+
+	Update test device section on "fb": set and read resolution
+
+	Add the Android ARM machine modes to the documentation, machine_androidarm, color red,
+	once the Linux device tree has been at least implemented enough to see some
+	boot messages or so.
+
+	Add the Alpha mode too even though probably almost nothing works at all.
+	Also red. Try to include instructions for NetBSD, OpenBSD
+	and FreeBSD although the later has been discontinued.
+
+	Add FreeBSD/mips to testmips section? https://wiki.freebsd.org/FreeBSD/MipsEmulation
+	If it works.
+
+	Add an Example in the documentation for a config file with multiple machines (and a plain net()).
+
+Floating point:
+	More tests.
+
+Networking:
+	x)  PERFORMANCE:
+		o) Fix performance problems caused by only allowing a
+		    single TCP packet to be unacked. (?)
+		o) Go through Lance Ethernet interrupt code and memory mapping, to look at
+		   performance. (Performance when downloading things from the internet is
+		   extremely poor, from inside NetBSD/pmax and OpenBSD/luna88k.)
+		   (Maybe it is not a problem with the Lance, but with the
+		   general src/net/ implementation...)
+	x)  Also adding support for connecting ttys (either to xterms, or to
+		pipes/sockets etc, or even to PPP->NAT or SLIP->NAT :-).
+	x)  Test with lower than 100 max tcp/udp connections,
+	    to make sure that reuse works!
+	x)  Multiple networks per emulation, and let different
+	    NICs in machines connect to different networks.
+	x)  Allow SLIP connections, possibly PPP, in addition to ethernet?
+
+PCI:
+	o)  Big-endian Malta access?
+	x)  Pretty much everything related to runtime configuration, device
+	    slots, interrupts, etc must be redesigned/cleaned up. The current
+	    code is very hardcoded and ugly.
+	o)  Allow cards to be added/removed during runtime more easily.
+	o)  Allow cards to be enabled/disabled (i/o ports, etc, like
+	    NetBSD needs for disk controller detection).
+	o)  Allow devices to be moved in memory during runtime.
+	o)  Interrupts per PCI slot, etc. (A-D).
+	o)  PCI interrupt controller logic... very hard to get right,
+	    because these differ a lot from one machine to the next.
+	x)  last write was ffffffff ==> fix this, it should be used
+	    together with a mask to get the correct bits. also, not ALL
+	    bits are size bits! (lowest 4 vs lowest 2?)
+	x)  add support for address fixups
+	x)  generalize the interrupt routing stuff (lines etc)
+
+X-windows and Framebuffer functionality in general:
+	o)  Icon for X11 framebuffer windows?
+	o)  Change window title in X11 windows for machines that have all cpus halted?
+	o)  Do a complete rewrite of the framebuffer/console stuff, so that:
+		1)  It does not rely on X11 specifically.
+		2)  It is possible to interact with emulated framebuffers
+		    and consoles "remotely", e.g. via a web page which
+		    controls multiple virtualized machines.
+		3)  It is possible to run on (hypothetical) non-X11
+		    graphics systems.
+	o)  Generalize the update_x1y1x2y2 stuff to an extend-region()
+	    function...
+	o)  -Yx sometimes causes crashes.
+	o)  Simple device access to framebuffer_blockcopyfill() etc,
+	    and text output (using the built-in fonts), for dev_fb.
+	o)  CLEAN UP the ugly event code
+	o)  Mouse clicks can be "missed" in the current system; this is
+	    not good. They should be put on a stack of some kind.
+	o)  More 2D and 3D framebuffer acceleration.
+	o)  Non-resizable windows?  Or choose scaledown depending
+		on size (and center the image, with a black border).
+	o)  Different scaledown on different windows?
+	o)  Non-integral scale-up? (E.g. 640x480 -> 1024x768)
+	o)  Switch scaledown during runtime? (Ala CTRL-ALT-plus/minus)
+	o)  Bug reported by Elijah Rutschman on MacOS with weird
+	    keys (F5 = cursor down?).
+	o)  Keyboard and mouse events:
+		x)  Do this for more machines than just DECstation
+		x)  more X11 cursor keycodes
+		x)  Keys like CTRL, ALT, SHIFT do not get through
+		    by themselves (these are necessary for example
+		    to change the font of an xterm in X in the
+		    emulator)
+	o)  Generalize the framebuffer stuff by moving _ALL_ X11
+		specific code to a separate module.
+	o)  Wayland? -W ?
+</pre>
+
+
+<p><br>
+<b><a name="release">Release checklist</a></b>
+
+<p><ul>
+	<li>Pre-release regression testing:
+	<ul>
+		<li>Build on as many platforms as possible, including inside guest OSes in GXemul itself.
+		<li>If there is time: Install as many as possible of the guest OSes in the documentation;
+			the documentation may need to be updated if there are regressions.
+		<li>If there is more time: try newer versions of the officially
+			supported guest OSes (sometimes these work, sometimes not).
+		<li>If there is even more time: see what the status is for the
+			"unsupported" guest OSes as well.
+	</ul>
+	<li>Release build, update notes etc:
+	<ul>
+		<li>Update the <tt>README</tt> and <tt>RELEASE</tt> notes.
+		<li>TODO updates (i.e. set goals for the <i>next</i> release, if possible,
+			or strike out things that have been fixed).
+		<li>HISTORY (mention the release).
+		<li>Tarball creation (make_release.sh and just_update.sh)
+		<li>Home page <i>Download page</i> update: version number and date.
+		<li>Home page <i>News page</i> update: new Release.
+		<li>Create subversion tag.
+		<li>Sync subversion to SourceForge mirror.
+		<li>Sync the homepage to the web server.
+		<li>Sourceforge File Release (upload the tarball).
+		<li>Mention release on #GXemul on FreeNode (IRC), set version number in topic if possible.
+		<li>gxemul-users mail, content similar to the RELEASE notes.
+	</ul>
+</ul>
+
+</body>
+</html>
+
