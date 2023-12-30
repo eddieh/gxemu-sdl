@@ -13,6 +13,10 @@ build: do_src
 do_src:
 	cd src; $(MAKE)
 
+tags: TAGS
+TAGS:
+	find . -name "*.[ch]" -exec etags -a {} ';'
+
 install:
 	@echo Installing binaries, man page, and documentation...
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
