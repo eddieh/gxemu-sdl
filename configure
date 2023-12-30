@@ -54,6 +54,8 @@
 #    o)  which compiler flags to use  (overridden by setting CFLAGS)
 #    o)  X11 flags and libraries  (TODO: should be possible to override
 #	 via command line options?)
+#    o)  SDL flags and libraries  (TODO: should be possible to override
+#	 via command line options?)
 #
 #  The general philosophy regarding command line switches is that anything
 #  which can be incorporated into the program as a runtime command line option
@@ -97,11 +99,15 @@ if [ z"$*" != z ]; then
 	for a in $*; do
 		if [ z$a = z--disable-x ]; then
 			NOX11=YES
+		else if [ z$a = z--disable-sdl ]; then
+			NOSDL=YES
 		else if [ z$a = z--debug ]; then
 			DEBUG=YES
 		else if [ z$a = z--help ]; then
 			printf "usage: $0 [options]\n\n"
-			echo "  --disable-x           don't include X11 support,"\
+			echo "  --disable-x           don't include X11 support," \
+			    "even if the host supports it"
+			echo "  --disable-sdl         don't include SDL support," \
 			    "even if the host supports it"
 			echo "  --debug               configure for a" \
 				"debug build (turn off optimizations,"
@@ -117,7 +123,7 @@ if [ z"$*" != z ]; then
 			echo "Run  $0 --help  to get a list of" \
 			    "available options."
 			exit
-		fi; fi; fi
+		fi; fi; fi; fi
 	done
 fi
 
@@ -434,6 +440,110 @@ if [ z$NOX11 = z ]; then
 fi
 
 
+if [ z$NOSDL = z ]; then
+	printf "checking for SDL headers and libs\n"
+
+	#  Try to compile a small SDL test program:
+	printf "#include <SDL2/SDL.h>
+	#include <SDL2/SDL_main.h>
+	#include <stdio.h>
+	void f(void) {
+		SDL_Init(SDL_INIT_VIDEO);
+	}
+	int main(int argc, char *argv[])
+	{ printf(\"1\"); return 0; }
+	" > _test_sdl.c
+
+	SDLOK=0
+
+	SDLINCLUDE="-I/usr/include -I/usr/include/SDL2"
+	$CC $CFLAGS _test_sdl.c -c -o _test_sdl.o $SDLINCLUDE 2> /dev/null
+
+	SDLLIB="-L/usr/lib -lSDL2 -Wl,-rpath,/usr/lib"
+	$CC $CFLAGS _test_sdl.o -o _test_sdl $SDLLIB 2> /dev/null
+
+	if [ -x _test_sdl ]; then
+		if [ 1 = `./_test_sdl` ]; then
+			SDLOK=1
+		fi
+	fi
+	rm -f _test_sdl _test_sdl.o
+
+	if [ z$SDLOK = z0 ]; then
+		SDLINCLUDE="-I/usr/local/include -I/usr/local/include/SDL2"
+		$CC $CFLAGS _test_sdl.c -c -o _test_sdl.o $SDLINCLUDE 2> /dev/null
+
+		SDLLIB="-L/usr/local/lib -lSDL2 -Wl,-rpath,/usr/local/lib"
+		$CC $CFLAGS _test_sdl.o -o _test_sdl $SDLLIB 2> /dev/null
+
+		if [ -x _test_sdl ]; then
+			if [ 1 = `./_test_sdl` ]; then
+				SDLOK=1
+			fi
+		fi
+	fi
+	rm -f _test_sdl _test_sdl.o
+
+	# MacPorts
+	if [ z$SDLOK = z0 ]; then
+		SDLINCLUDE="-I/opt/include -I/opt/include/SDL2"
+		$CC $CFLAGS _test_sdl.c -c -o _test_sdl.o $SDLINCLUDE 2> /dev/null
+
+		SDLLIB="-L/opt/lib -lSDL2"
+		$CC $CFLAGS _test_sdl.o -o _test_sdl $SDLLIB 2> /dev/null
+
+		if [ -x _test_sdl ]; then
+			SDLOK=1
+		fi
+	fi
+	rm -f _test_sdl _test_sdl.o
+
+	# Homebrew
+	if [ z$SDLOK = z0 ]; then
+		SDLINCLUDE="-I/usr/local/include -I/usr/local/include/SDL2"
+		$CC $CFLAGS _test_sdl.c -c -o _test_sdl.o $SDLINCLUDE 2> /dev/null
+
+		SDLLIB="-L/usr/local/lib -lSDL2"
+		$CC $CFLAGS _test_sdl.o -o _test_sdl $SDLLIB 2> /dev/null
+
+		if [ -x _test_sdl ]; then
+			if [ 1 = `./_test_sdl` ]; then
+				SDLOK=1
+			fi
+		fi
+	fi
+	rm -f _test_sdl _test_sdl.o
+
+	#  Special case for some 64-bit Linux/x86_64 systems:
+	if [ z$SDLOK = z0 ]; then
+		$CC $CFLAGS _test_sdl.c -c -o _test_sdl.o $SDLINCLUDE 2> /dev/null
+
+		SDLLIB="-L/usr/lib64 -lSDL"
+		$CC $CFLAGS _test_sdl.o -o _test_sdl $SDLLIB 2> /dev/null
+
+		if [ -x _test_sdl ]; then
+			if [ 1 = `./_test_sdl` ]; then
+				SDLOK=1
+			fi
+		fi
+	fi
+	rm -f _test_sdl _test_sdl.o
+
+	if [ z$SDLOK = z0 ]; then
+		echo "Failed to compile SDL test program." \
+		    "Configuring without SDL."
+	else
+		printf "   headers:   $SDLINCLUDE\n"
+		printf "   libraries: $SDLLIB\n"
+		echo "SDLINCLUDE=$SDLINCLUDE" >> _Makefile.header
+		echo "SDLLIB=$SDLLIB" >> _Makefile.header
+		printf "#define WITH_SDL\n" >> config.h
+	fi
+
+	rm -f _test_sdl.c
+fi
+
+
 if [ z$HPUX = zYES ]; then
 	CFLAGS="-D_XOPEN_SOURCE_EXTENDED $CFLAGS"
 	printf "#define HPUX\n" >> config.h
@@ -461,7 +571,7 @@ if [ -x _testprog ]; then
 			CWARNINGS="$CWARNINGS -Werror"
 		else
 			printf "no\n"
-			
+
 			#printf "CFLAGS = $CFLAGS\n"
 			#cat _testprog.err
 			#printf "\n"
@@ -1090,4 +1200,3 @@ printf "\n#endif  /*  CONFIG_H  */\n" >> config.h
 rm -f _Makefile.header _test*
 
 echo Configured. You may now run ' make ' to build gxemul.
-

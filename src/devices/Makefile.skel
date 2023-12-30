@@ -2,7 +2,7 @@
 #  Makefile for GXemul devices
 #
 
-CFLAGS=$(CWARNINGS) $(COPTIM) $(XINCLUDE) $(DINCLUDE)
+CFLAGS=$(CWARNINGS) $(COPTIM) $(XINCLUDE) $(SDLINCLUDE) $(DINCLUDE)
 
 OBJS=device.o bus_isa.o bus_pci.o lk201.o \
 	dev_8253.o dev_8259.o dev_adb.o dev_ahc.o dev_algor.o dev_asc.o \
@@ -68,4 +68,3 @@ clean:
 clean_all: clean
 	cd fonts; $(MAKE) clean_all
 	rm -f Makefile fonts/Makefile
-

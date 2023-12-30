@@ -2,7 +2,7 @@
 # Makefile for GXemul machines
 #
 
-CFLAGS=$(CWARNINGS) $(COPTIM) $(XINCLUDE) $(DINCLUDE)
+CFLAGS=$(CWARNINGS) $(COPTIM) $(XINCLUDE) $(SDLINCLUDE) $(DINCLUDE)
 
 OBJS=	machine.o machine_algor.o machine_alpha.o \
 	machine_androidarm.o machine_arc.o \
@@ -33,4 +33,3 @@ clean:
 
 clean_all: clean
 	rm -f Makefile
-

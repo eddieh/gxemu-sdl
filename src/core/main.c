@@ -6,8 +6,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -15,7 +15,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -126,7 +126,7 @@ static void usage(bool longusage)
 	color_prompt();
 	printf("%s [general options] @configfile\n", progname);
 	color_normal();
-	
+
 	if (!longusage) {
 		printf("\nRun  ");
 		color_prompt();
@@ -221,6 +221,9 @@ static void usage(bool longusage)
 	printf("  -z disp   add disp as an X11 display to use for framebuffers\n");
 #endif /*  WITH_X11  */
 
+#ifdef WITH_SDL
+	printf("  -F fbt    use framebuffer backing type [SDL | X11]\n");
+#endif  /* WITH_SDL */
 	printf("\nGeneral options:\n");
 	printf("  -A        disable colorized output\n");
 	printf("  -c cmd    add cmd as a command to run before starting "
@@ -279,11 +282,16 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 	char *type = NULL, *subtype = NULL;
 	struct machine *m = emul_add_machine(emul, NULL);
 
+	char *fbtype = NULL;
+
 	const char *opts =
 	    "AC:c:Dd:E:e:GHhI:iJj:k:KL:M:Nn:Oo:p:QqRrSs:TtVvW:"
 #ifdef WITH_X11
 	    "XxY:"
 #endif
+#ifdef WITH_SDL
+	    "F:"
+#endif  /* WITH_SDL */
 	    "Z:z:";
 
 	while ((ch = getopt(argc, argv, opts)) != -1) {
@@ -331,6 +339,10 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 				exit(1);
 			}
 			subtype = optarg;
+			machine_specific_options_used = true;
+			break;
+		case 'F':
+			fbtype = strdup(optarg);
 			machine_specific_options_used = true;
 			break;
 		case 'G':
@@ -499,6 +511,13 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 		    &m->machine_type, &m->machine_subtype);
 		if (!res)
 			exit(1);
+	}
+
+	if (fbtype != NULL) {
+		if (strcasecmp(fbtype, "X11") == 0)
+			m->x11_md.in_use = 1;
+		else if (strcasecmp(fbtype, "SDL") == 0)
+			;	/* noop for now */
 	}
 
 	if (m->machine_type == MACHINE_NONE && machine_specific_options_used) {
@@ -777,4 +796,3 @@ int main(int argc, char *argv[])
 
 	return 0;
 }
-
