@@ -6,8 +6,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -15,7 +15,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -223,7 +223,7 @@ static void ungrab()
  */
 void x11_redraw_cursor(struct machine *m, int i)
 {
-	struct fb_window *fbwin = m->x11_md.fb_windows[i];
+	struct fb_window *fbwin = mda_x11(m).fb_windows[i];
 
 	if (fbwin->x11_display == NULL)
 		return;
@@ -317,13 +317,13 @@ void x11_redraw_cursor(struct machine *m, int i)
  */
 void x11_redraw(struct machine *m, int i)
 {
-	if (i < 0 || i >= m->x11_md.n_fb_windows ||
-	    m->x11_md.fb_windows[i]->x11_fb_winxsize <= 0)
+	if (i < 0 || i >= mda_x11(m).n_fb_windows ||
+	    mda_x11(m).fb_windows[i]->x11_fb_winxsize <= 0)
 		return;
 
 	x11_putimage_fb(m, i);
 	x11_redraw_cursor(m, i);
-	XFlush(m->x11_md.fb_windows[i]->x11_display);
+	XFlush(mda_x11(m).fb_windows[i]->x11_display);
 }
 
 
@@ -335,10 +335,10 @@ void x11_redraw(struct machine *m, int i)
 void x11_putpixel_fb(struct machine *m, int i, int x, int y, int color)
 {
 	struct fb_window *fbwin;
-	if (i < 0 || i >= m->x11_md.n_fb_windows)
+	if (i < 0 || i >= mda_x11(m).n_fb_windows)
 		return;
 
-	fbwin = m->x11_md.fb_windows[i];
+	fbwin = mda_x11(m).fb_windows[i];
 
 	if (fbwin->x11_fb_winxsize <= 0)
 		return;
@@ -366,10 +366,10 @@ void x11_putpixel_fb(struct machine *m, int i, int x, int y, int color)
 void x11_putimage_fb(struct machine *m, int i)
 {
 	struct fb_window *fbwin;
-	if (i < 0 || i >= m->x11_md.n_fb_windows)
+	if (i < 0 || i >= mda_x11(m).n_fb_windows)
 		return;
 
-	fbwin = m->x11_md.fb_windows[i];
+	fbwin = mda_x11(m).fb_windows[i];
 
 	if (fbwin->x11_fb_winxsize <= 0)
 		return;
@@ -393,16 +393,16 @@ void x11_putimage_fb(struct machine *m, int i)
  */
 void x11_init(struct machine *m)
 {
-	m->x11_md.n_fb_windows = 0;
+	mda_x11(m).n_fb_windows = 0;
 
-	if (m->x11_md.n_display_names > 0) {
+	if (mda_x11(m).n_display_names > 0) {
 		int i;
-		for (i=0; i<m->x11_md.n_display_names; i++)
+		for (i=0; i<mda_x11(m).n_display_names; i++)
 			debugmsg(SUBSYS_X11, "init", VERBOSITY_INFO,
-			    "using X11 display: %s", m->x11_md.display_names[i]);
+			    "using X11 display: %s", mda_x11(m).display_names[i]);
 	}
 
-	m->x11_md.current_display_name_nr = 0;
+	mda_x11(m).current_display_name_nr = 0;
 }
 
 
@@ -491,15 +491,15 @@ struct fb_window *x11_fb_init(int xsize, int ysize, char *name,
 	char fg[80], bg[80];
 	char *display_name;
 
-	fb_number = m->x11_md.n_fb_windows;
+	fb_number = mda_x11(m).n_fb_windows;
 
-	CHECK_ALLOCATION(m->x11_md.fb_windows = 
-	    (struct fb_window **) realloc(m->x11_md.fb_windows,
-	    sizeof(struct fb_window *) * (m->x11_md.n_fb_windows + 1)));
-	CHECK_ALLOCATION(fbwin = m->x11_md.fb_windows[fb_number] =
+	CHECK_ALLOCATION(mda_x11(m).fb_windows =
+	    (struct fb_window **) realloc(mda_x11(m).fb_windows,
+	    sizeof(struct fb_window *) * (mda_x11(m).n_fb_windows + 1)));
+	CHECK_ALLOCATION(fbwin = mda_x11(m).fb_windows[fb_number] =
 	    (struct fb_window *) malloc(sizeof(struct fb_window)));
 
-	m->x11_md.n_fb_windows ++;
+	mda_x11(m).n_fb_windows ++;
 
 	memset(fbwin, 0, sizeof(struct fb_window));
 
@@ -508,11 +508,11 @@ struct fb_window *x11_fb_init(int xsize, int ysize, char *name,
 
 	/*  Which display name?  */
 	display_name = NULL;
-	if (m->x11_md.n_display_names > 0) {
-		display_name = m->x11_md.display_names[
-		    m->x11_md.current_display_name_nr];
-		m->x11_md.current_display_name_nr ++;
-		m->x11_md.current_display_name_nr %= m->x11_md.n_display_names;
+	if (mda_x11(m).n_display_names > 0) {
+		display_name = mda_x11(m).display_names[
+		    mda_x11(m).current_display_name_nr];
+		mda_x11(m).current_display_name_nr ++;
+		mda_x11(m).current_display_name_nr %= mda_x11(m).n_display_names;
 	}
 
 	if (display_name != NULL)
@@ -671,8 +671,8 @@ static void x11_check_events_machine(struct emul *emul, struct machine *m)
 {
 	int fb_nr;
 
-	for (fb_nr = 0; fb_nr < m->x11_md.n_fb_windows; fb_nr ++) {
-		struct fb_window *fbwin = m->x11_md.fb_windows[fb_nr];
+	for (fb_nr = 0; fb_nr < mda_x11(m).n_fb_windows; fb_nr ++) {
+		struct fb_window *fbwin = mda_x11(m).fb_windows[fb_nr];
 		XEvent event;
 		bool need_redraw = false;
 
@@ -902,7 +902,7 @@ static void x11_check_events_machine(struct emul *emul, struct machine *m)
 						console_makeavail(m->
 						    main_console_handle, '[');
 						console_makeavail(m->
-						    main_console_handle, 
+						    main_console_handle,
 						    x == 98? 'A' : (
 						    x == 104? 'B' : (
 						    x == 102? 'C' : (
@@ -918,7 +918,7 @@ static void x11_check_events_machine(struct emul *emul, struct machine *m)
 						console_makeavail(m->
 						    main_console_handle, '[');
 						console_makeavail(m->
-						    main_console_handle, 
+						    main_console_handle,
 						    x == 80? 'A' : (
 						    x == 88? 'B' : (
 						    x == 85? 'C' : (

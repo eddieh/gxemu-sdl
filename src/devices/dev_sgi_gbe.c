@@ -6,8 +6,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -15,7 +15,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -23,7 +23,7 @@
  *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
- *   
+ *
  *
  *  COMMENT: SGI "Graphics Back End", graphics controller + framebuffer
  *
@@ -111,7 +111,7 @@ struct sgi_gbe_data {
 
 void get_rgb(struct sgi_gbe_data *d, uint32_t color, uint8_t* r, uint8_t* g, uint8_t* b)
 {
-	// TODO: Don't switch on color_mode. For overlays, this is always 
+	// TODO: Don't switch on color_mode. For overlays, this is always
 	// 8-bit index mode!
 	switch (d->color_mode) {
 	case CRMFB_MODE_TYP_I8:
@@ -168,7 +168,7 @@ DEVICE_TICK(sgi_gbe)
 	int bytes_per_pixel = d->bitdepth / 8;
 	int partial_pixels, width_in_tiles;
 
-	if (!cpu->machine->x11_md.in_use)
+	if (!mda_attached(cpu->machine))
 		return;
 
 	// If not frozen...
@@ -188,7 +188,7 @@ DEVICE_TICK(sgi_gbe)
 	// but IRIX seems to put a value ending in 0x......80 there, and the
 	// last part of that address seems to matter.
 	// TODO: Double-check this with the real hardware.
-	
+
 	if (d->ovr_control & CRMFB_DMA_ENABLE) {
 		tiletable = (d->ovr_control & 0xffffff80);
 		bytes_per_pixel = 1;
@@ -220,10 +220,10 @@ DEVICE_TICK(sgi_gbe)
 	// as the screen is filled instead. This makes it work for both
 	// Linux' "tweaked linear" mode and all the other guest OSes.
 	const int max_nr_of_tiles = 256;
-	
+
 	uint32_t tile[max_nr_of_tiles];
 	uint8_t alltileptrs[max_nr_of_tiles * sizeof(uint16_t)];
-	
+
 	cpu->memory_rw(cpu, cpu->mem, tiletable,
 	    alltileptrs, sizeof(alltileptrs), MEM_READ,
 	    NO_EXCEPTIONS | PHYSICAL);
@@ -243,15 +243,15 @@ DEVICE_TICK(sgi_gbe)
 		for (int line = 0; line < 128; ++line) {
 			for (int tilex = 0; tilex < w; ++tilex) {
 				int tilenr = tilex + tiley * w;
-				
+
 				if (tilenr >= max_nr_of_tiles)
 					continue;
-				
+
 				uint32_t base = tile[tilenr];
-				
+
 				if (base == 0)
 					continue;
-				
+
 				// Read one line of up to 512 bytes from the tile.
 				int len = tilex < width_in_tiles ? 512 : (partial_pixels * bytes_per_pixel);
 
@@ -264,7 +264,7 @@ DEVICE_TICK(sgi_gbe)
 				if (fb_offset + fb_len > screensize) {
 					fb_len = screensize - fb_offset;
 				}
-				
+
 				if (fb_len <= 0) {
 					tiley = max_nr_of_tiles;  // to break
 					tilex = w;
@@ -354,16 +354,16 @@ DEVICE_TICK(sgi_gbe)
 				for (int dx = 0; dx < 32; ++dx) {
 					sx = cx + dx;
 					sy = cy + dy;
-					
+
 					if (sx < 0 || sx >= d->xres ||
 					    sy < 0 || sy >= d->yres)
 						continue;
-					
+
 					int wordindex = dy*2 + (dx>>4);
 					uint32_t word = d->cursor_bitmap[wordindex];
-					
+
 					int color = (word >> ((15 - (dx&15))*2)) & 3;
-					
+
 					if (!color)
 						continue;
 
@@ -537,7 +537,7 @@ DEVICE_ACCESS(sgi_gbe)
 			d->xres = (idata & CRMFB_HCMAP_ON_MASK) >> CRMFB_VT_HCMAP_ON_SHIFT;
 			dev_fb_resize(d->fb_data, d->xres, d->yres);
 		}
-		
+
 		odata = (d->xres << CRMFB_VT_HCMAP_ON_SHIFT) + d->xres + 100;
 		break;
 
@@ -555,7 +555,7 @@ DEVICE_ACCESS(sgi_gbe)
 	case CRMFB_VT_VC_STARTXY:	// 0x1004c
 		// TODO
 		break;
-		
+
 	case CRMFB_OVR_WIDTH_TILE:	// 0x20000
 		if (writeflag == MEM_WRITE) {
 			d->ovr_tilesize = idata;
@@ -599,7 +599,7 @@ DEVICE_ACCESS(sgi_gbe)
 			debug("[ sgi_gbe: setting PIXSIZE to 0x%08x ]\n", (int)idata);
 		}
 		break;
-		
+
 	case 0x30008:
 		// TODO: Figure out exactly what the low bits do.
 		// Irix seems to want 0x20 to "sometimes" be on or off here.
@@ -638,28 +638,28 @@ DEVICE_ACCESS(sgi_gbe)
 		else
 			odata = d->cursor_pos;
 		break;
-		
+
 	case CRMFB_CURSOR_CONTROL:	// 0x70004
 		if (writeflag == MEM_WRITE)
 			d->cursor_control = idata;
 		else
 			odata = d->cursor_control;
 		break;
-		
+
 	case CRMFB_CURSOR_CMAP0:	// 0x70008
 		if (writeflag == MEM_WRITE)
 			d->cursor_cmap0 = idata;
 		else
 			odata = d->cursor_cmap0;
 		break;
-		
+
 	case CRMFB_CURSOR_CMAP1:	// 0x7000c
 		if (writeflag == MEM_WRITE)
 			d->cursor_cmap1 = idata;
 		else
 			odata = d->cursor_cmap1;
 		break;
-		
+
 	case CRMFB_CURSOR_CMAP2:	// 0x70010
 		if (writeflag == MEM_WRITE)
 			d->cursor_cmap2 = idata;
@@ -761,7 +761,7 @@ void dev_sgi_gbe_init(struct machine *machine, struct memory *mem, uint64_t base
 	d->xres = GBE_DEFAULT_XRES;
 	d->yres = GBE_DEFAULT_YRES;
 	d->bitdepth = GBE_DEFAULT_BITDEPTH;
-	
+
 	// My O2 says 0x300ae001 here (while running).
 	d->ctrlstat = CRMFB_CTRLSTAT_INTERNAL_PCLK |
 			CRMFB_CTRLSTAT_GPIO6_INPUT |
@@ -787,5 +787,3 @@ void dev_sgi_gbe_init(struct machine *machine, struct memory *mem, uint64_t base
 	    dev_sgi_gbe_access, d, DM_DEFAULT, NULL);
 	machine_add_tickfunction(machine, dev_sgi_gbe_tick, d, 19);
 }
-
-

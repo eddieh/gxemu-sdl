@@ -9,8 +9,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -18,7 +18,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -91,6 +91,36 @@ struct x11_md {
 	struct fb_window **fb_windows;
 };
 
+struct sdl_md {
+
+};
+
+#define display_mode_unknown  0
+#define display_mode_text     1
+#define display_mode_graphics 2
+
+#define display_backing_none 0
+#define display_backing_x11  1
+#define display_backing_sdl  2
+
+struct display_adapter {
+	int mode;
+	int fbtype;
+	int attached;
+	union {
+		struct x11_md x11_md;
+		struct sdl_md sdl_md;
+	};
+};
+
+#define mda(m) (m->display_adapter)
+
+#define mda_attached(m)  (mda(m).attached)
+#define mda_using_x11(m) (mda(m).fbtype == display_backing_x11)
+#define mda_using_sdl(m) (mda(m).fbtype == display_backing_sdl)
+
+#define mda_x11(m) (mda(m).x11_md)
+#define mda_sdl(m) (mda(m).sdl_md)
 
 /*
  *  The machine struct:
@@ -172,7 +202,8 @@ struct machine {
 	struct statistics statistics;
 
 	/*  X11/framebuffer stuff (per machine):  */
-	struct x11_md x11_md;
+	//struct x11_md x11_md;
+	struct display_adapter display_adapter;
 
 	/*  Machine-dependent: (PROM stuff, etc.)  */
 	union {

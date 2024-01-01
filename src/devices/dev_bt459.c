@@ -6,8 +6,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -15,7 +15,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -23,7 +23,7 @@
  *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
- *   
+ *
  *
  *  COMMENT: Brooktree BT459, used by TURBOchannel graphics cards
  */
@@ -43,7 +43,7 @@
 
 
 #ifdef WITH_X11
-#include <X11/Xlib.h>     
+#include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #endif
 
@@ -147,7 +147,7 @@ static void bt459_update_X_cursor(struct cpu *cpu, struct bt459_data *d)
 	 */
 
 #ifdef WITH_X11
-	if (cpu->machine->x11_md.in_use && d->vfb_data->fb_window != NULL) {
+	if (mda_attached(cpu->machine) && d->vfb_data->fb_window != NULL) {
 		for (y=0; y<=ymax; y++) {
 			for (x=0; x<=xmax; x+=4) {
 				struct fb_window *win = d->vfb_data->fb_window;
@@ -583,4 +583,3 @@ void dev_bt459_init(struct machine *machine, struct memory *mem,
 	machine_add_tickfunction(machine, dev_bt459_tick, d,
 	    BT459_TICK_SHIFT);
 }
-

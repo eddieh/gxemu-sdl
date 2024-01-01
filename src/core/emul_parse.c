@@ -6,8 +6,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -15,7 +15,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -471,7 +471,7 @@ static void parse__machine(struct emul *e, FILE *f, int *in_emul, int *line,
 		if (!cur_machine_use_x11[0])
 			strlcpy(cur_machine_use_x11, "no",
 			    sizeof(cur_machine_use_x11));
-		m->x11_md.in_use = parse_on_off(cur_machine_use_x11);
+		mda_attached(m) = parse_on_off(cur_machine_use_x11);
 
 		if (!cur_machine_prom_emulation[0])
 			strlcpy(cur_machine_prom_emulation, "yes",
@@ -540,16 +540,16 @@ static void parse__machine(struct emul *e, FILE *f, int *in_emul, int *line,
 		m->physical_ram_in_mb = atoi(cur_machine_memory);
 
 		if (!cur_machine_x11_scaledown[0])
-			m->x11_md.scaledown = 1;
+			mda_x11(m).scaledown = 1;
 		else {
-			m->x11_md.scaledown = atoi(cur_machine_x11_scaledown);
-			if (m->x11_md.scaledown < 0) {
-				m->x11_md.scaleup = 0 - m->x11_md.scaledown;
-				m->x11_md.scaledown = 1;
+			mda_x11(m).scaledown = atoi(cur_machine_x11_scaledown);
+			if (mda_x11(m).scaledown < 0) {
+				mda_x11(m).scaleup = 0 - mda_x11(m).scaledown;
+				mda_x11(m).scaledown = 1;
 			}
-			if (m->x11_md.scaledown < 1) {
+			if (mda_x11(m).scaledown < 1) {
 				fprintf(stderr, "Invalid scaledown value"
-				    " (%i)\n", m->x11_md.scaledown);
+				    " (%i)\n", mda_x11(m).scaledown);
 				exit(1);
 			}
 		}
@@ -573,12 +573,12 @@ static void parse__machine(struct emul *e, FILE *f, int *in_emul, int *line,
 			m->boot_string_argument = strdup(cur_machine_bootarg);
 
 		for (i=0; i<cur_machine_n_x11_disp; i++) {
-			m->x11_md.n_display_names ++;
-			CHECK_ALLOCATION(m->x11_md.display_names = (char **) realloc(
-			    m->x11_md.display_names, m->x11_md.n_display_names
+			mda_x11(m).n_display_names ++;
+			CHECK_ALLOCATION(mda_x11(m).display_names = (char **) realloc(
+			    mda_x11(m).display_names, mda_x11(m).n_display_names
 			    * sizeof(char *)));
-			CHECK_ALLOCATION(m->x11_md.display_names[
-			    m->x11_md.n_display_names-1] =
+			CHECK_ALLOCATION(mda_x11(m).display_names[
+			    mda_x11(m).n_display_names-1] =
 			    strdup(cur_machine_x11_disp[i]));
 			free(cur_machine_x11_disp[i]);
 			cur_machine_x11_disp[i] = NULL;
@@ -753,4 +753,3 @@ void emul_parse_config(struct emul *e, char *fname)
 
 	fclose(f);
 }
-

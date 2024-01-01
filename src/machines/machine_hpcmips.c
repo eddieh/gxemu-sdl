@@ -6,8 +6,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -15,7 +15,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -23,7 +23,7 @@
  *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
- *   
+ *
  *
  *  COMMENT: Handheld MIPS-based machines
  */
@@ -82,7 +82,7 @@ MACHINE_SETUP(hpcmips)
 
 		/*  TODO: irq?  */
 		snprintf(tmpstr, sizeof(tmpstr), "ns16550 irq=0 addr=0x"
-		    "0a008680 addr_mult=4 in_use=%i", !machine->x11_md.in_use);
+		    "0a008680 addr_mult=4 in_use=%i", !mda_attached(machine));
 		machine->main_console_handle = (size_t)
 		    device_add(machine, tmpstr);
 
@@ -112,7 +112,7 @@ MACHINE_SETUP(hpcmips)
 
 		/*  TODO: irq?  */
 		snprintf(tmpstr, sizeof(tmpstr), "ns16550 irq=0 addr=0x"
-		    "0a008680 addr_mult=4 in_use=%i", !machine->x11_md.in_use);
+		    "0a008680 addr_mult=4 in_use=%i", !mda_attached(machine));
 		machine->main_console_handle = (size_t)
 		    device_add(machine, tmpstr);
 
@@ -242,7 +242,7 @@ MACHINE_SETUP(hpcmips)
 			    "ns16550 irq=%i addr=0x0c000010", 8+VRIP_INTR_SIU);
 			x = (size_t)device_add(machine, tmpstr);
 
-			if (!machine->x11_md.in_use)
+			if (!mda_attached(machine))
 				machine->main_console_handle = x;
 		}
 
@@ -345,7 +345,7 @@ MACHINE_SETUP(hpcmips)
 		    "res:240,bpp:4,gray,hpck:3084,inv ether=0,0x03fe0300,eth0");
 		tmp[tmplen-1] = '\0';
 
-		if (!machine->x11_md.in_use)
+		if (!mda_attached(machine))
 			snprintf(tmp+strlen(tmp), tmplen-strlen(tmp),
 			    " console=ttyS0,115200");
 		tmp[tmplen-1] = '\0';
@@ -389,7 +389,7 @@ MACHINE_SETUP(hpcmips)
 	store_16bit_word_in_host(cpu, (unsigned char *)&hpc_bootinfo.fb_type,
 	    hpc_fb_encoding);
 	store_16bit_word_in_host(cpu, (unsigned char *)&hpc_bootinfo.bi_cnuse,
-	    machine->x11_md.in_use? BI_CNUSE_BUILTIN : BI_CNUSE_SERIAL);
+	    mda_attached(machine)? BI_CNUSE_BUILTIN : BI_CNUSE_SERIAL);
 
 	/*  printf("hpc_bootinfo.platid_cpu     = 0x%08x\n",
 	    hpc_bootinfo.platid_cpu);
@@ -480,4 +480,3 @@ MACHINE_REGISTER(hpcmips)
 
 	me->set_default_ram = machine_default_ram_hpcmips;
 }
-

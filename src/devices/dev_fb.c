@@ -6,8 +6,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -15,7 +15,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -23,7 +23,7 @@
  *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
- *   
+ *
  *
  *  COMMENT: Generic framebuffer device
  *
@@ -147,7 +147,7 @@ void dev_fb_resize(struct vfb_data *d, int new_xsize, int new_ysize)
 			size_t fromofs = d->bytes_per_line * y;
 			size_t toofs = new_bytes_per_line * y;
 			size_t len_to_copy = d->bytes_per_line <
-			    new_bytes_per_line? d->bytes_per_line	
+			    new_bytes_per_line? d->bytes_per_line
 			    : new_bytes_per_line;
 			memset(new_framebuffer + toofs, 0, new_bytes_per_line);
 			if (y < d->x11_ysize)
@@ -413,7 +413,7 @@ DEVICE_TICK(fb)
 	int need_to_redraw_cursor = 0;
 #endif
 
-	if (!cpu->machine->x11_md.in_use)
+	if (!mda_attached(cpu->machine))
 		return;
 
 	do {
@@ -648,7 +648,7 @@ DEVICE_ACCESS(fb)
 	 *  of which area(s) we modify, so that the display isn't updated
 	 *  unnecessarily.
 	 */
-	if (writeflag == MEM_WRITE && cpu->machine->x11_md.in_use) {
+	if (writeflag == MEM_WRITE && mda_attached(cpu->machine)) {
 		int x, y, x2,y2;
 
 		x = (relative_addr % d->bytes_per_line) * 8 / d->bit_depth;
@@ -806,7 +806,7 @@ struct vfb_data *dev_fb_init(struct machine *machine, struct memory *mem,
 	else if (d->bit_depth == 8 || d->bit_depth == 1)
 		set_blackwhite_palette(d, 1 << d->bit_depth);
 
-	d->vfb_scaledown = machine->x11_md.scaledown;
+	d->vfb_scaledown = mda_x11(machine).scaledown;
 
 	d->bytes_per_line = d->xsize * d->bit_depth / 8;
 	size = d->ysize * d->bytes_per_line;
@@ -835,10 +835,10 @@ struct vfb_data *dev_fb_init(struct machine *machine, struct memory *mem,
 	set_title(d);
 
 #ifdef WITH_X11
-	if (machine->x11_md.in_use) {
+	if (mda_attached(machine)) {
 		int i = 0;
 		d->fb_window = x11_fb_init(d->x11_xsize, d->x11_ysize,
-		    d->title, machine->x11_md.scaledown, machine);
+		    d->title, mda_x11(machine).scaledown, machine);
 		switch (d->fb_window->x11_screen_depth) {
 		case 15: i = 2; break;
 		case 16: i = 4; break;
@@ -871,4 +871,3 @@ struct vfb_data *dev_fb_init(struct machine *machine, struct memory *mem,
 
 	return d;
 }
-

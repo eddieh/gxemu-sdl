@@ -6,8 +6,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -15,7 +15,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -29,7 +29,7 @@
  *
  *  Some good info here:
  *	https://www.linux-mips.org/wiki/ARC
- *	
+ *
  */
 
 #include <ctype.h>
@@ -615,7 +615,7 @@ static uint64_t arcbios_addchild(struct cpu *cpu,
 			tmp2 = buf[0]; buf[0] = buf[3]; buf[3] = tmp2;
 			tmp2 = buf[1]; buf[1] = buf[2]; buf[2] = tmp2;
 		}
-		
+
 		tmp = buf[0] + (buf[1]<<8) + (buf[2]<<16) + (buf[3]<<24);
 		peeraddr += 0x30;
 		peeraddr += tmp + 1;
@@ -1693,7 +1693,7 @@ int arcbios_emul(struct cpu *cpu)
 				/*  NOTE: Only one char, from STDIN:  */
 				j2 = cpu->cd.mips.gpr[MIPS_GPR_A2];  /*  :-)  */
 			}
-			
+
 			store_32bit_word(cpu, cpu->cd.mips.gpr[MIPS_GPR_A3],
 			    nread);
 			/*  TODO: not EAGAIN?  */
@@ -1859,7 +1859,7 @@ int arcbios_emul(struct cpu *cpu)
 			    (bufTmp[3] << 24) + ((uint64_t)bufTmp[4] << 32) +
 			    ((uint64_t)bufTmp[5] << 40) + ((uint64_t)bufTmp[6] << 48)
 			    + ((uint64_t)bufTmp[7] << 56);
-			    
+
 			machine->md.arc->current_seek_offset[
 			    cpu->cd.mips.gpr[MIPS_GPR_A0]] = ofs;
 			debug("%016" PRIx64" ]\n", (uint64_t) ofs);
@@ -2082,7 +2082,7 @@ static void arcbios_add_other_components(struct machine *machine,
 			    0xffffffffe2000000ULL, 0x090000000ULL,
 			    0x091000000ULL, 1, 1, 1, 1, 1, 0, 2, 2);
 
-			if (machine->x11_md.in_use) {
+			if (mda_attached(machine)) {
 				ali_s3 = arcbios_addchild_manual(cpu,
 				    COMPONENT_CLASS_ControllerClass,
 				    COMPONENT_TYPE_DisplayController,
@@ -2101,7 +2101,7 @@ static void arcbios_add_other_components(struct machine *machine,
 			}
 			break;
 		case MACHINE_ARC_JAZZ_MAGNUM:
-			if (machine->x11_md.in_use) {
+			if (mda_attached(machine)) {
 				vxl = arcbios_addchild_manual(cpu,
 				    COMPONENT_CLASS_ControllerClass,
 				    COMPONENT_TYPE_DisplayController,
@@ -2283,7 +2283,7 @@ void arcbios_console_init(struct machine *machine,
 struct envstrings
 {
 	int	n;
-	
+
 	char	**name;
 	char	**value;
 };
@@ -2468,7 +2468,7 @@ static void arc_environment_setup(struct machine *machine, int is64bit,
 
 	if (machine->machine_type == MACHINE_SGI) {
 		/*  g for graphical mode. G for graphical mode with SGI logo visible on Irix?  */
-		if (machine->x11_md.in_use) {
+		if (mda_attached(machine)) {
 			set_env(env, "ConsoleIn", "keyboard()");
 			set_env(env, "ConsoleOut", "video()");
 			set_env(env, "console", "g");
@@ -2482,7 +2482,7 @@ static void arc_environment_setup(struct machine *machine, int is64bit,
 		}
 
 		set_env(env, "AutoLoad", "No");
-		
+
 		if (machine->bootdev_id < 0 || machine->force_netboot) {
 			/*
 			 *  diskless=1 means boot from network disk? (nfs?)
@@ -2534,7 +2534,7 @@ static void arc_environment_setup(struct machine *machine, int is64bit,
 		set_env(env, "debug_bigmem", "1");
 	} else {
 		//  General ARC:
-		if (machine->x11_md.in_use) {
+		if (mda_attached(machine)) {
 			set_env(env, "ConsoleIn", "multi()key()keyboard()console()");
 			set_env(env, "ConsoleOut", "multi()video()monitor()console()");
 		} else {
@@ -2729,7 +2729,7 @@ void arcbios_init(struct machine *machine, int is64bit, uint64_t sgi_ram_offset,
 		machine->md.arc->current_seek_offset[i] = 0;
 	}
 
-	if (!machine->x11_md.in_use)
+	if (!mda_attached(machine))
 		machine->md.arc->vgaconsole = 0;
 
 	if (machine->md.arc->vgaconsole) {
@@ -2807,7 +2807,7 @@ void arcbios_init(struct machine *machine, int is64bit, uint64_t sgi_ram_offset,
 	 */
 	int reserved_bottom_mem_in_mb = 12;
 	int free_type = ARCBIOS_MEM_FreeMemory;
-	
+
 	machine->md.arc->memdescriptor_base = ARC_MEMDESC_ADDR;
 
 	arc_reserved = 0x2000;
@@ -3126,7 +3126,7 @@ void arcbios_init(struct machine *machine, int is64bit, uint64_t sgi_ram_offset,
 		struct arcbios_spb arcbios_spb;
 		memset(&arcbios_spb, 0, sizeof(arcbios_spb));
 		store_32bit_word_in_host(cpu, (unsigned char *) &arcbios_spb.SPBSignature, ARCBIOS_SPB_SIGNATURE);
-		store_32bit_word_in_host(cpu, (unsigned char *) &arcbios_spb.SPBLength, sizeof(arcbios_spb));     
+		store_32bit_word_in_host(cpu, (unsigned char *) &arcbios_spb.SPBLength, sizeof(arcbios_spb));
 		store_16bit_word_in_host(cpu, (unsigned char *) &arcbios_spb.Version, 1);
 		store_16bit_word_in_host(cpu, (unsigned char *) &arcbios_spb.Revision, machine->machine_type == MACHINE_SGI? 10 : 2);
 		store_32bit_word_in_host(cpu, (unsigned char *) &arcbios_spb.FirmwareVector, ARC_FIRMWARE_VECTORS);
@@ -3141,7 +3141,7 @@ void arcbios_init(struct machine *machine, int is64bit, uint64_t sgi_ram_offset,
 			// The lowest bit means "boot started".
 			const uint64_t btsr_addr = SGI_SPB_ADDR + 0x80;
 			store_32bit_word_in_host(cpu, (unsigned char *) &arcbios_spb.RestartBlock, btsr_addr);
-			
+
 			store_32bit_word(cpu, btsr_addr + 0x00, 0x42545352);
 			store_32bit_word(cpu, btsr_addr + 0x1c, 0x40);	// 0x40 means "Processor Ready"
 		}
@@ -3159,4 +3159,3 @@ void arcbios_init(struct machine *machine, int is64bit, uint64_t sgi_ram_offset,
 
 	debug_indentation(-1);
 }
-

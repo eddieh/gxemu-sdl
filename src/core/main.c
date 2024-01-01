@@ -450,19 +450,21 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 			internal_w(optarg);
 			exit(0);
 		case 'X':
-			m->x11_md.in_use = 1;
+			mda_attached(m) = 1;
+			mda(m).fbtype = display_backing_x11;
+			mda_attached(m) = 1;
 			machine_specific_options_used = true;
 			/*  FALL-THROUGH  */
 		case 'x':
 			console_allow_slaves(1);
 			break;
 		case 'Y':
-			m->x11_md.scaledown = atoi(optarg);
-			if (m->x11_md.scaledown < -1) {
-				m->x11_md.scaleup = - m->x11_md.scaledown;
-				m->x11_md.scaledown = 1;
+			mda_x11(m).scaledown = atoi(optarg);
+			if (mda_x11(m).scaledown < -1) {
+				mda_x11(m).scaleup = - mda_x11(m).scaledown;
+				mda_x11(m).scaledown = 1;
 			}
-			if (m->x11_md.scaledown < 1) {
+			if (mda_x11(m).scaledown < 1) {
 				fprintf(stderr, "Invalid scaledown value.\n");
 				exit(1);
 			}
@@ -474,12 +476,12 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 			machine_specific_options_used = true;
 			break;
 		case 'z':
-			m->x11_md.n_display_names ++;
-			CHECK_ALLOCATION(m->x11_md.display_names = (char **) realloc(
-			    m->x11_md.display_names,
-			    m->x11_md.n_display_names * sizeof(char *)));
-			CHECK_ALLOCATION(m->x11_md.display_names[
-			    m->x11_md.n_display_names-1] = strdup(optarg));
+			mda_x11(m).n_display_names ++;
+			CHECK_ALLOCATION(mda_x11(m).display_names = (char **) realloc(
+			    mda_x11(m).display_names,
+			    mda_x11(m).n_display_names * sizeof(char *)));
+			CHECK_ALLOCATION(mda_x11(m).display_names[
+			    mda_x11(m).n_display_names-1] = strdup(optarg));
 			machine_specific_options_used = true;
 			break;
 		default:
@@ -514,10 +516,14 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 	}
 
 	if (fbtype != NULL) {
-		if (strcasecmp(fbtype, "X11") == 0)
-			m->x11_md.in_use = 1;
-		else if (strcasecmp(fbtype, "SDL") == 0)
-			;	/* noop for now */
+		if (strcasecmp(fbtype, "X11") == 0) {
+			mda_attached(m) = 1;
+			mda(m).fbtype = display_backing_x11;
+			mda_attached(m) = 1;
+		} else if (strcasecmp(fbtype, "SDL") == 0) {
+			mda_attached(m) = 1;
+			mda(m).fbtype = display_backing_sdl;
+		}
 	}
 
 	if (m->machine_type == MACHINE_NONE && machine_specific_options_used) {
@@ -585,7 +591,7 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 		exit(1);
 	}
 
-	if (!using_switch_Z && !m->x11_md.in_use)
+	if (!using_switch_Z && !mda_attached(m))
 		m->n_gfx_cards = 0;
 
 	return 0;
@@ -619,7 +625,9 @@ int main(int argc, char *argv[])
 	progname = argv[0];
 
 
+	/* TODO: check term cap */
 	enable_colorized_output = getenv("CLICOLOR") != NULL;
+	/* TODO: respect getenv("NO_COLOR"): https://no-color.org */
 
 	debugmsg_init();
 

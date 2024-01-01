@@ -6,8 +6,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -15,7 +15,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -47,9 +47,9 @@
 /*
  *  luna88kprom_init():
  */
-void luna88kprom_init(struct machine *machine)
+void luna88kprom_init(struct machine *m)
 {
-	struct cpu *cpu = machine->cpus[0];
+	struct cpu *cpu = m->cpus[0];
 
         /*
          *  Memory layout according to OpenBSD's locore0.S:
@@ -61,7 +61,7 @@ void luna88kprom_init(struct machine *machine)
 	 *  The boot loader stage before loading OpenBSD's kernel seems
 	 *  to be loaded at 0x00700000.
          */
- 
+
         /*  0x00001100: ROM function table. See OpenBSD's machdep.c  */
         store_32bit_word(cpu, 0x1100 + sizeof(uint32_t) * 3, 0x2030);       /*  ROM console getch  */
         store_32bit_word(cpu, 0x1100 + sizeof(uint32_t) * 4, 0x2040);       /*  ROM console putch  */
@@ -71,9 +71,9 @@ void luna88kprom_init(struct machine *machine)
 
         store_32bit_word(cpu, 0x2040, M88K_PROM_INSTR);
         store_32bit_word(cpu, 0x2044, 0xf400c001);	/*  jmp (r1)  */
-  
+
         /*  0x00001114: Framebuffer depth  */
-        store_32bit_word(cpu, 0x1114, machine->x11_md.in_use ? 1 : 0);
+        store_32bit_word(cpu, 0x1114, mda_attached(m) ? 1 : 0);
 }
 
 
@@ -108,4 +108,3 @@ int luna88kprom_emul(struct cpu *cpu)
 
 	return 1;
 }
-

@@ -6,8 +6,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -15,7 +15,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -23,15 +23,15 @@
  *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
- *   
+ *
  *
  *  COMMENT: ARM-based "Android" machines
  *
  *  TODO. This is bogus so far, only enough to see the Linux kernel start
  *  executing instructions.
  *
- *  gxemul -e sony-xperia-mini -tvvK boot.img 
- *  gxemul -e finow-x5-air -tvvK boot.img 
+ *  gxemul -e sony-xperia-mini -tvvK boot.img
+ *  gxemul -e finow-x5-air -tvvK boot.img
  */
 
 #include <stdio.h>
@@ -89,12 +89,12 @@ MACHINE_SETUP(androidarm)
 		// TODO: interrupt "GIC_SPI 44"
 		snprintf(tmpstr, sizeof(tmpstr), "ns16550 irq=%s.cpu[%i].irq"
 		    " addr=0x11005000 addr_mult=4 in_use=%i",
-		    machine->path, machine->bootstrap_cpu, !machine->x11_md.in_use);
+		    machine->path, machine->bootstrap_cpu, !mda_attached(machine));
 		machine->main_console_handle = (size_t)
 		    device_add(machine, tmpstr);
 
 		dev_fb_init(machine, machine->memory,
-			0x12340000 /*  TODO addr  */, 
+			0x12340000 /*  TODO addr  */,
 			VFB_GENERIC,
 			400, 400,
 			400, 400,
@@ -112,7 +112,7 @@ MACHINE_SETUP(androidarm)
 		// could be of some help.
 
 		dev_fb_init(machine, machine->memory,
-			0x23450000 /*  TODO addr  */, 
+			0x23450000 /*  TODO addr  */,
 			VFB_GENERIC,
 			320, 480,
 			320, 480,
@@ -135,7 +135,7 @@ MACHINE_SETUP(androidarm)
 		// Device Tree:
 		// https://www.kernel.org/doc/Documentation/devicetree/booting-without-of.txt
 		cpu->cd.arm.r[2] = 0x08000000;	// Device Tree at 128 MB from start of RAM.
-		
+
 		store_32bit_word(cpu, cpu->cd.arm.r[2], swap_if_little_endian(0xd00dfeed, cpu));
 	}
 }
@@ -196,4 +196,3 @@ MACHINE_REGISTER(androidarm)
 
 	me->set_default_ram = machine_default_ram_androidarm;
 }
-

@@ -6,8 +6,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -15,7 +15,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -87,8 +87,11 @@ struct machine *machine_new(char *name, struct emul *emul, int id)
 	m->byte_order_override = NO_BYTE_ORDER_OVERRIDE;
 	m->boot_kernel_filename = strdup("");
 	m->boot_string_argument = NULL;
-	m->x11_md.scaledown = 1;
-	m->x11_md.scaleup = 1;
+
+	/* initialize scale factor */
+	mda_x11(m).scaledown = 1;
+	mda_x11(m).scaleup = 1;
+
 	m->n_gfx_cards = 1;
 	symbol_init(&m->symbol_context);
 
@@ -418,20 +421,22 @@ void machine_dumpinfo(struct machine *m)
 	if (m->ncpus > 1)
 		debug("Bootstrap cpu is nr %i\n", m->bootstrap_cpu);
 
-	if (m->x11_md.in_use) {
-		debug("Using X11");
-		if (m->x11_md.scaledown > 1)
-			debug(", scaledown %i", m->x11_md.scaledown);
-		if (m->x11_md.scaleup > 1)
-			debug(", scaleup %i", m->x11_md.scaleup);
-		if (m->x11_md.n_display_names > 0) {
-			for (i=0; i<m->x11_md.n_display_names; i++) {
-				debug(i? ", " : " (");
-				debug("\"%s\"", m->x11_md.display_names[i]);
+	if (mda_attached(m)) {
+		if (mda_using_x11(m)) {
+			debug("Using X11");
+			if (mda_x11(m).scaledown > 1)
+				debug(", scaledown %i", mda_x11(m).scaledown);
+			if (mda_x11(m).scaleup > 1)
+				debug(", scaleup %i", mda_x11(m).scaleup);
+			if (mda_x11(m).n_display_names > 0) {
+				for (i=0; i<mda_x11(m).n_display_names; i++) {
+					debug(i? ", " : " (");
+					debug("\"%s\"", mda_x11(m).display_names[i]);
+				}
+				debug(")");
 			}
-			debug(")");
+			debug("\n");
 		}
-		debug("\n");
 	}
 
 	diskimage_dump_info(m);
@@ -499,7 +504,7 @@ void machine_setup(struct machine *machine)
 		machine_add_devices_as_symbols(machine, 0xffffffffa0000000);
 		break;
 	}
-	
+
 	if (machine->machine_name != NULL)
 		debugmsg(SUBSYS_MACHINE, "model", VERBOSITY_INFO, "%s", machine->machine_name);
 
@@ -841,7 +846,7 @@ void machine_list_available_types_and_cpus(void)
 
 	debug_indentation(iadd);
 	cpu_list_available_types();
-	debug_indentation(-iadd);  
+	debug_indentation(-iadd);
 
 	debug("\nMost of the CPU types are bogus, and not really implemented."
 	    " The main effect of\nselecting a specific CPU type is to choose "
@@ -903,4 +908,3 @@ void machine_init(void)
 
 	automachine_init();
 }
-

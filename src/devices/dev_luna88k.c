@@ -6,8 +6,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -15,7 +15,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -246,7 +246,7 @@ static void luna88k_timer_tick(struct timer *t, void *extra)
 {
 	struct luna88k_data* d = (struct luna88k_data*) extra;
 	d->pending_timer_interrupts ++;
-	
+
 	// More than a second lost? Then restart the nr of pending interrupts.
 	if (d->pending_timer_interrupts > (int)(LUNA88K_PSEUDO_TIMER_HZ)) {
 		d->pending_timer_interrupts = 1;
@@ -388,12 +388,12 @@ DEVICE_TICK(luna88k)
 				shifted = 1;
 				c += 'a' - 'A';
 			}
-			
+
 			if (c >= 1 && c <= 26) {
 				controlled = 1;
 				c += 'a' - 1;
 			}
-			
+
 			switch (c) {
 			case 'a':	sc = 0x42;	break;
 			case 'b':	sc = 0x56;	break;
@@ -484,7 +484,7 @@ DEVICE_TICK(luna88k)
 					add_to_sio_queue(d, 1, 0x0d);
 				if (controlled)
 					add_to_sio_queue(d, 1, 0x0a);
-			
+
 				add_to_sio_queue(d, 1, sc);
 				add_to_sio_queue(d, 1, sc | 0x80);
 
@@ -655,7 +655,7 @@ DEVICE_ACCESS(luna88k)
 	case OBIO_PIO0A:	/*  0x49000000: PIO-0 port A  */
 		/*  OpenBSD reads dipswitch settings from PIO0A and B.  */
 		odata = 0;	// high byte
-		if (cpu->machine->x11_md.in_use)
+		if (mda_attached(cpu->machine))
 			odata |= 0x40;
 		odata |= 0x80;	// multi-user mode
 		odata |= 0x20;	// don't ask name
@@ -823,7 +823,7 @@ DEVICE_ACCESS(luna88k)
 			uint32_t status = d->interrupt_status & currentMask;
 			int highestCurrentStatus = 0;
 			odata = currentMask >> 8;
-			
+
 			for (int i = 1; i <= 6; ++i) {
 				int m = 1 << (25 + i);
 				if (status & m)
@@ -1022,11 +1022,10 @@ DEVINIT(luna88k)
 	snprintf(n, sizeof(n), "mb89352 addr=0xE1000000 irq=%s.luna88k.3", devinit->interrupt_path);
 	device_add(devinit->machine, n);
 
-	if (devinit->machine->x11_md.in_use) {
+	if (mda_attached(devinit->machine)) {
 		d->using_framebuffer = true;
 		device_add(devinit->machine, "lunafb addr=0xB1000000");
 	}
 
 	return 1;
 }
-

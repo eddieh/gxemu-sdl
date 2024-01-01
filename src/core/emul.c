@@ -6,8 +6,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -15,7 +15,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -446,7 +446,7 @@ bool emul_machine_setup(struct machine *m, int n_load, char **load_names,
 
 	cpu = m->cpus[m->bootstrap_cpu];
 
-	if (m->x11_md.in_use)
+	if (mda_attached(m))
 		x11_init(m);
 
 	/*  Fill the directly addressable memory with random bytes:  */
@@ -740,7 +740,7 @@ bool emul_machine_setup(struct machine *m, int n_load, char **load_names,
 	debugmsg(SUBSYS_MACHINE, cpu_startinfo_cpuname, VERBOSITY_INFO, "%s", cpu_startinfo);
 
 	debug_indentation(-1);
-	
+
 	return true;
 }
 
@@ -758,7 +758,7 @@ void emul_dumpinfo(struct emul *e)
 		net_dumpinfo(e->net);
 
 	for (i = 0; i < e->n_machines; i++) {
-	
+
 		if (e->n_machines > 1)
 			debugmsg(SUBSYS_MACHINE, "", VERBOSITY_INFO, "%s (%i)", e->machines[i]->name, i);
 		else
@@ -956,7 +956,7 @@ void emul_run(struct emul *emul)
 			cpu_show_cycles(emul->machines[0], false);
 			bootcpu->ninstrs_show = bootcpu->ninstrs;
 		}
-		
+
 		if (about_to_enter_single_step) {
 			single_step = true;
 			about_to_enter_single_step = false;
@@ -997,5 +997,3 @@ void emul_run(struct emul *emul)
 
 	console_deinit_main();
 }
-
-

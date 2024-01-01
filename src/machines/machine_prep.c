@@ -6,8 +6,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -15,7 +15,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -71,7 +71,7 @@ MACHINE_SETUP(prep)
 		bus_pci_add(machine, pci_data, machine->memory,
 		    0, 13, 0, "dec21143");
 
-		if (machine->x11_md.in_use) {
+		if (mda_attached(machine)) {
 			bus_pci_add(machine, pci_data, machine->memory,
 			    0, 14, 0, "s3_virge");
 		}
@@ -131,7 +131,7 @@ MACHINE_SETUP(prep)
 	store_32bit_word(cpu, cpu->cd.ppc.gpr[6]+12, 20);
 	store_32bit_word(cpu, cpu->cd.ppc.gpr[6]+16, 1);
 	store_buf(cpu, cpu->cd.ppc.gpr[6]+20,
-	    machine->x11_md.in_use? "vga":"com", 4);
+	    mda_attached(machine)? "vga":"com", 4);
 	store_32bit_word(cpu, cpu->cd.ppc.gpr[6]+24, 0x3f8);/*  addr  */
 	store_32bit_word(cpu, cpu->cd.ppc.gpr[6]+28, 9600);/*  speed  */
 
@@ -187,4 +187,3 @@ MACHINE_REGISTER(prep)
 	machine_entry_add_subtype(me, "MVME2400", MACHINE_PREP_MVME2400,
 	    "mvme2400", NULL);
 }
-

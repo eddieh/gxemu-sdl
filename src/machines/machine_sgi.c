@@ -6,8 +6,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -15,7 +15,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -23,7 +23,7 @@
  *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
- *   
+ *
  *
  *  COMMENT: Silicon Graphics' MIPS-based machines
  *
@@ -124,7 +124,7 @@ MACHINE_SETUP(sgi)
 		fatal("TODO ip19 interrupt rewrite\n");
 		abort();
 		//dev_scc_init(machine, mem, 0x10086000, 0,
-		//    machine->x11_md.in_use, 0, 8);	/*  serial? irix?  */
+		//    mda_attached(machine), 0, 8);	/*  serial? irix?  */
 
 		device_add(machine, "sgi_ip19 addr=0x18000000");
 
@@ -274,10 +274,10 @@ abort();
 fatal("TODO: legacy rewrite\n");
 abort();
 //		j = dev_pckbc_init(machine, mem, 0x1fbd9840, PCKBC_8242,
-//		    0, 0, machine->x11_md.in_use, 0);  /*  TODO: irq numbers  */
+//		    0, 0, mda_attached(machine), 0);  /*  TODO: irq numbers  */
 j = 0;
 
-		if (machine->x11_md.in_use)
+		if (mda_attached(machine))
 			machine->main_console_handle = j;
 
 		/*  sq0: Ethernet.  TODO:  This should have irq_nr = 8 + 3  */
@@ -312,7 +312,7 @@ j = 0;
 		fatal("TODO ip25 interrupt rewrite\n");
 		abort();
 		//dev_scc_init(machine, mem,
-		//    0x400086000ULL, 0, machine->x11_md.in_use, 0, 8);
+		//    0x400086000ULL, 0, mda_attached(machine), 0, 8);
 
 		/*  NOTE: ip19! (perhaps not really the same  */
 		device_add(machine, "sgi_ip19 addr=0x18000000");
@@ -394,7 +394,7 @@ j = 0;
 		snprintf(tmpstr, sizeof(tmpstr), "ns16550 irq=%s.cpu[%i].2 addr="
 		    "0x1f620170 name2=tty0 in_use=%i",
 		    machine->path, machine->bootstrap_cpu,
-		    machine->x11_md.in_use? 0 : 1);
+		    mda_attached(machine)? 0 : 1);
 		machine->main_console_handle = (size_t)device_add(machine,
 		    tmpstr);
 		snprintf(tmpstr, sizeof(tmpstr), "ns16550 irq=%s.cpu[%i].2 addr="
@@ -441,11 +441,11 @@ j = 0;
 			if (machine->physical_ram_in_mb > 256)
 				dev_ram_init(machine, 0x50000000ULL, (machine->physical_ram_in_mb - 256) * 1048576, DEV_RAM_RAM, 0, NULL);
 		}
-		
+
 		/*  Connect CRIME (Interrupt Controller) to MIPS irq 2:  */
 		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].2",
 		    machine->path, machine->bootstrap_cpu);
-		dev_crime_init(machine, mem, 0x14000000, tmpstr, machine->x11_md.in_use);
+		dev_crime_init(machine, mem, 0x14000000, tmpstr, mda_attached(machine));
 
 		/*  Rendering Engine  */
 		dev_sgi_re_init(machine, mem, 0x15000000);
@@ -513,7 +513,7 @@ j = 0;
 		    "ns16550 irq=%s.cpu[%i].2.crime.0x%x.mace.%i addr="
 		    "0x1f390000 addr_mult=0x100 in_use=%i name2=tty0",
 		    machine->path, machine->bootstrap_cpu,
-		    CRIME_INT_PERIPH_SERIAL, 20, machine->x11_md.in_use? 0 : 1);
+		    CRIME_INT_PERIPH_SERIAL, 20, mda_attached(machine)? 0 : 1);
 		j = (size_t)device_add(machine, tmpstr);
 		snprintf(tmpstr, sizeof(tmpstr),
 		    "ns16550 irq=%s.cpu[%i].2.crime.0x%x.mace.%i addr="
@@ -540,10 +540,10 @@ j = 0;
 
 			i = dev_pckbc_init(machine, mem, 0x1f320000,
 			    PCKBC_8242, tmpstr1,
-			    tmpstr2, machine->x11_md.in_use,
+			    tmpstr2, mda_attached(machine),
 			    0);
 
-			if (machine->x11_md.in_use)
+			if (mda_attached(machine))
 				machine->main_console_handle = i;
 		}
 
@@ -650,7 +650,7 @@ MACHINE_DEFAULT_CPU(sgi)
 	        machine->cpu_name = strdup("R8000");
 	if (machine->cpu_name == NULL && machine->machine_subtype == 24)
 	        machine->cpu_name = strdup("R5000");
-                        
+
 	/*  Other SGIs should probably work with
 	    R4000, R4400 or R5000 or similar:  */
 	if (machine->cpu_name == NULL)
@@ -694,8 +694,7 @@ MACHINE_REGISTER(sgi)
 
 	machine_entry_add_subtype(me, "IP30", 30, "ip30", "octane", NULL);
 
-	machine_entry_add_subtype(me, "IP32", 32, "ip32", "o2", NULL); 
+	machine_entry_add_subtype(me, "IP32", 32, "ip32", "o2", NULL);
 
-	machine_entry_add_subtype(me, "IP35", 35, "ip35", NULL); 
+	machine_entry_add_subtype(me, "IP35", 35, "ip35", NULL);
 }
-

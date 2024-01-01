@@ -6,8 +6,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -15,7 +15,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -23,7 +23,7 @@
  *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
- *   
+ *
  *
  *  COMMENT: ARC (Advanced RISC Computing) machines
  */
@@ -136,13 +136,13 @@ MACHINE_SETUP(arc)
 		    machine->bootstrap_cpu);
 		i = dev_pckbc_init(machine, mem, 0x80005000ULL,
 		    PCKBC_JAZZ, tmpstr, tmpstr2,
-		    machine->x11_md.in_use, 0);
+		    mda_attached(machine), 0);
 
 		/*  Serial controllers at JAZZ irq 8 and 9:  */
 		snprintf(tmpstr, sizeof(tmpstr),
 		    "ns16550 irq=%s.cpu[%i].jazz.8 addr=0x80006000"
 		    " in_use=%i name2=tty0", machine->path,
-		    machine->bootstrap_cpu, machine->x11_md.in_use? 0 : 1);
+		    machine->bootstrap_cpu, mda_attached(machine)? 0 : 1);
 		j = (size_t)device_add(machine, tmpstr);
 		snprintf(tmpstr, sizeof(tmpstr),
 		    "ns16550 irq=%s.cpu[%i].jazz.9 addr=0x80007000"
@@ -150,14 +150,14 @@ MACHINE_SETUP(arc)
 		    machine->bootstrap_cpu);
 		device_add(machine, tmpstr);
 
-		if (machine->x11_md.in_use)
+		if (mda_attached(machine))
 			machine->main_console_handle = i;
 		else
 			machine->main_console_handle = j;
 
 		switch (machine->machine_subtype) {
 		case MACHINE_ARC_JAZZ_PICA:
-			if (machine->x11_md.in_use) {
+			if (mda_attached(machine)) {
 				dev_vga_init(machine, mem, 0x400a0000ULL,
 				    0x600003c0ULL, machine->machine_name);
 				arcbios_console_init(machine,
@@ -184,7 +184,7 @@ MACHINE_SETUP(arc)
 		device_add(machine, tmpstr);
 
 		/*  ASC at JAZZ irq 5  */
-		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].jazz.5", 
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].jazz.5",
 		    machine->path, machine->bootstrap_cpu);
 		dev_asc_init(machine, mem, 0x80002000ULL, tmpstr, NULL,
 		    DEV_ASC_PICA, dev_jazz_dma_controller, jazz_data);
@@ -196,7 +196,7 @@ MACHINE_SETUP(arc)
 		device_add(machine, tmpstr);
 
 		/*  MC146818 at MIPS irq 2:  */
-		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].2", 
+		snprintf(tmpstr, sizeof(tmpstr), "%s.cpu[%i].2",
 		    machine->path, machine->bootstrap_cpu);
 		dev_mc146818_init(machine, mem,
 		    0x80004000ULL, tmpstr, MC146818_ARC_JAZZ, 1);
@@ -260,4 +260,3 @@ MACHINE_REGISTER(arc)
 	machine_entry_add_subtype(me, "Jazz Magnum", MACHINE_ARC_JAZZ_MAGNUM,
 	    "magnum", "jazz magnum", NULL);
 }
-

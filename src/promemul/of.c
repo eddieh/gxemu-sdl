@@ -6,8 +6,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -15,7 +15,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -618,11 +618,11 @@ static void of_dump_devices(struct of_data *ofd, int parent)
 			od = od->next;
 			continue;
 		}
-		
+
 		debug("\"%s\"", od->name);
 		debug(" (handle %i)\n", od->handle);
 		debug_indentation(1);
-		
+
 		while (pr != NULL) {
 			debug("(%s: ", pr->name);
 			if (pr->flags == OF_PROP_STRING)
@@ -632,7 +632,7 @@ static void of_dump_devices(struct of_data *ofd, int parent)
 			debug(")\n");
 			pr = pr->next;
 		}
-		
+
 		of_dump_devices(ofd, od->handle);
 		debug_indentation(-1);
 		od = od->next;
@@ -940,7 +940,7 @@ void of_emul_init_uninorth(struct machine *machine)
  *
  *  This function creates an OpenFirmware emulation instance.
  */
-struct of_data *of_emul_init(struct machine *machine, struct vfb_data *vfb_data,
+struct of_data *of_emul_init(struct machine *m, struct vfb_data *vfb_data,
 	uint64_t fb_addr, int fb_xsize, int fb_ysize)
 {
 	unsigned char *memory_reg, *memory_av;
@@ -959,7 +959,7 @@ struct of_data *of_emul_init(struct machine *machine, struct vfb_data *vfb_data,
 
 	/*  Root = device 1  */
 	of_add_device(ofd, "", "");
-	of_add_prop_str(machine, ofd, "/", "model", "GXemul OpenFirmware machine");
+	of_add_prop_str(m, ofd, "/", "model", "GXemul OpenFirmware machine");
 
 	CHECK_ALLOCATION(root_address_cells = (unsigned char *) malloc(1 * sizeof(uint32_t)));
 	of_store_32bit_in_host(root_address_cells, 0);
@@ -973,14 +973,14 @@ struct of_data *of_emul_init(struct machine *machine, struct vfb_data *vfb_data,
 	devstdin  = of_add_device(ofd, "stdin", "/io");
 	devstdout = of_add_device(ofd, "stdout", "/io");
 
-	if (machine->x11_md.in_use) {
+	if (mda_attached(m)) {
 		fatal("!\n!  TODO: keyboard + framebuffer for MacPPC\n!\n");
 
-		of_add_prop_str(machine, ofd, "/io/stdin", "name",
+		of_add_prop_str(m, ofd, "/io/stdin", "name",
 		    "keyboard");
-		of_add_prop_str(machine, ofd, "/io", "name", "adb");
+		of_add_prop_str(m, ofd, "/io", "name", "adb");
 
-		of_add_prop_str(machine, ofd, "/io/stdout", "device_type",
+		of_add_prop_str(m, ofd, "/io/stdout", "device_type",
 		    "display");
 		of_add_prop_int32(ofd, "/io/stdout", "width", fb_xsize);
 		of_add_prop_int32(ofd, "/io/stdout", "height", fb_ysize);
@@ -991,28 +991,28 @@ struct of_data *of_emul_init(struct machine *machine, struct vfb_data *vfb_data,
 		CHECK_ALLOCATION(zs_assigned_addresses = (unsigned char *) malloc(12));
 		memset(zs_assigned_addresses, 0, 12);
 
-		of_add_prop_str(machine, ofd, "/io/stdin", "name", "ch-b");
-		of_add_prop_str(machine, ofd, "/io/stdin", "device_type",
+		of_add_prop_str(m, ofd, "/io/stdin", "name", "ch-b");
+		of_add_prop_str(m, ofd, "/io/stdin", "device_type",
 		    "serial");
 		of_add_prop_int32(ofd, "/io/stdin", "reg", 0xf3013000);
 		of_add_prop(ofd, "/io/stdin", "assigned-addresses",
 		    zs_assigned_addresses, 12, 0);
 
-		of_add_prop_str(machine, ofd, "/io/stdout", "device_type",
+		of_add_prop_str(m, ofd, "/io/stdout", "device_type",
 		    "serial");
 	}
 
 	of_add_device(ofd, "cpus", "/");
-	for (i=0; i<machine->ncpus; i++) {
+	for (i=0; i<m->ncpus; i++) {
 		char tmp[50];
 		snprintf(tmp, sizeof(tmp), "@%x", i);
 		of_add_device(ofd, tmp, "/cpus");
 		snprintf(tmp, sizeof(tmp), "/cpus/@%x", i);
-		of_add_prop_str(machine, ofd, tmp, "device_type", "cpu");
+		of_add_prop_str(m, ofd, tmp, "device_type", "cpu");
 		of_add_prop_int32(ofd, tmp, "timebase-frequency",
-		    machine->emulated_hz / 4);
+		    m->emulated_hz / 4);
 		of_add_prop_int32(ofd, tmp, "clock-frequency",
-		    machine->emulated_hz);
+		    m->emulated_hz);
 		of_add_prop_int32(ofd, tmp, "reg", i);
 	}
 
@@ -1031,13 +1031,13 @@ struct of_data *of_emul_init(struct machine *machine, struct vfb_data *vfb_data,
 	CHECK_ALLOCATION(memory_av = (unsigned char *) malloc(2 * sizeof(uint32_t)));
 
 	of_store_32bit_in_host(memory_reg + 0, 0);
-	of_store_32bit_in_host(memory_reg + 4, machine->physical_ram_in_mb<<20);
+	of_store_32bit_in_host(memory_reg + 4, m->physical_ram_in_mb<<20);
 	of_store_32bit_in_host(memory_av + 0, 10 << 20);
-	of_store_32bit_in_host(memory_av + 4, (machine->physical_ram_in_mb - 10) << 20);
+	of_store_32bit_in_host(memory_av + 4, (m->physical_ram_in_mb - 10) << 20);
 	of_add_prop(ofd, "/memory", "reg", memory_reg, 2 * sizeof(uint32_t), 0);
 	of_add_prop(ofd, "/memory", "available", memory_av, 2*sizeof(uint32_t),0);
-	of_add_prop_str(machine, ofd, "/memory", "name", "memory");
-	of_add_prop_str(machine, ofd, "/memory","device_type","memory"/*?*/);
+	of_add_prop_str(m, ofd, "/memory", "name", "memory");
+	of_add_prop_str(m, ofd, "/memory","device_type","memory"/*?*/);
 
 	of_add_prop_int32(ofd, "/chosen", "memory", memory_dev->handle);
 
@@ -1067,7 +1067,7 @@ struct of_data *of_emul_init(struct machine *machine, struct vfb_data *vfb_data,
 	if (verbose >= 2)
 		of_dump_all(ofd);
 
-	machine->md.of_data = ofd;
+	m->md.of_data = ofd;
 
 	return ofd;
 }
@@ -1188,4 +1188,3 @@ int of_emul(struct cpu *cpu)
 
 	return 1;
 }
-

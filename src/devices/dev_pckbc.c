@@ -6,8 +6,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -15,7 +15,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -23,7 +23,7 @@
  *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
- *   
+ *
  *
  *  COMMENT: 8042 PC keyboard controller (+ 8242WB Keyboard/Mouse controller)
  *
@@ -633,7 +633,7 @@ DEVICE_TICK(pckbc)
 
 	// Mouse input:
 	/*  Don't do mouse updates if we're running in serial console mode:  */
-	if (cpu->machine->x11_md.in_use && d->state[1] == STATE_NORMAL && d->scanning_enabled[1]) {
+	if (mda_attached(cpu->machine) && d->state[1] == STATE_NORMAL && d->scanning_enabled[1]) {
 		int xdelta, ydelta, mouse_buttons, mouse_fb_nr;
 		console_getmouse(&xdelta, &ydelta, &mouse_buttons, &mouse_fb_nr);
 
@@ -799,7 +799,7 @@ static void dev_pckbc_command(struct pckbc_data *d, int port_nr)
 	case KBC_GETID:
 		/*  Get keyboard/mouse ID.  NOTE/TODO: Ugly hardcoded answer.  */
 		pckbc_add_code(d, KBR_ACK, port_nr);
-		
+
 		if (port_nr == 0) {
 			// Keyboard:
 			pckbc_add_code(d, 0xab, port_nr);
@@ -946,7 +946,7 @@ if (x&1)
 					fatal(" %02x", data[i]);
 				fatal(" ]\n");
 			}
-			
+
 			switch (d->state[port_nr]) {
 			case STATE_LDCMDBYTE:
 				d->cmdbyte = idata;
@@ -1063,7 +1063,7 @@ if (x&1)
 
 	case PS2 + PS2_RXBUF:
 		if (writeflag==MEM_READ) {
-			/*  TODO: What should be returned if no data 
+			/*  TODO: What should be returned if no data
 			    is available?  */
 			odata = 0;
 			if (d->head[port_nr] != d->tail[port_nr])
@@ -1166,7 +1166,7 @@ int dev_pckbc_init(struct machine *machine, struct memory *mem,
 		len = 0x40;
 		d->translation_table = 3;
 	}
-	
+
 	if (type == PCKBC_JAZZ) {
 		type = PCKBC_8042;
 		len = DEV_PCKBC_LENGTH + 0x60;
@@ -1196,4 +1196,3 @@ int dev_pckbc_init(struct machine *machine, struct memory *mem,
 
 	return d->console_handle;
 }
-
