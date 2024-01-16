@@ -1,8 +1,9 @@
-#ifndef	X11_H
-#define	X11_H
+#ifndef	DISPLAY_H
+#define	DISPLAY_H
 
 /*
  *  Copyright (C) 2003-2021  Anders Gavare.  All rights reserved.
+ *  Copyright (C) 2023-2024  Eddie Hillenbrand.  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -28,81 +29,70 @@
  *  SUCH DAMAGE.
  *
  *
- *  Headerfile for src/display/x11.c.
+ *  Headerfile for src/display/display.c.
  */
 
 #include <stdbool.h>
 #include "misc.h"
 
 struct emul;
-
-#ifdef WITH_X11
-#include <X11/Xlib.h>
-#endif
+struct x11_window;
+struct sdl_window;
 
 
-/*  x11.c:  */
+/*  display.c:  */
 #define N_GRAYCOLORS			16
 #define	CURSOR_COLOR_TRANSPARENT	-1
 #define	CURSOR_COLOR_INVERT		-2
 #define	CURSOR_MAXY			64
 #define	CURSOR_MAXX			64
 
-/*  Framebuffer windows:  */
-struct x11_window {
+struct display {
 	int		fb_number;
 	char		*name;
 
-#ifdef WITH_X11
-	/*  x11_fb_winxsize > 0 for a valid x11_window  */
-	int		x11_fb_winxsize, x11_fb_winysize;
-	int		scaledown;
-	Display		*x11_display;
+	union {
+		struct x11_window *x11_window;
+		struct sdl_window *sdl_window;
+	};
 
-	int		x11_screen;
-	int		x11_screen_depth;
-	unsigned long	fg_color;
-	unsigned long	bg_color;
-	XColor		x11_graycolor[N_GRAYCOLORS];
-	Window		x11_window;
-	GC		x11_fb_gc;
+	void (*display_redraw_cursor)(struct machine *, int);
+	void (*display_redraw)(struct machine *, int);
+	void (*display_putpixel_fb)(struct machine *,
+	    int, int, int, int);
 
-	XImage		*fb_ximage;
-	unsigned char	*ximage_data;
-
-	/*  -1 means transparent, 0 and up are grayscales  */
-	int		cursor_pixels[CURSOR_MAXY][CURSOR_MAXX];
-	int		cursor_x;
-	int		cursor_y;
-	int		cursor_xsize;
-	int		cursor_ysize;
-	int		cursor_on;
-	int		OLD_cursor_x;
-	int		OLD_cursor_y;
-	int		OLD_cursor_xsize;
-	int		OLD_cursor_ysize;
-	int		OLD_cursor_on;
-
-	/*  Host's X11 cursor:  */
-	Cursor		host_cursor;
-	Pixmap		host_cursor_pixmap;
+#if defined(WITH_X11) || defined(WITH_SDL)
+	void (*display_putimage_fb)(struct machine *, int);
 #endif
+
+	void (*display_init)(struct machine *);
+	void (*display_fb_resize)(struct display *, int, int);
+	void (*display_set_standard_properties)(struct display *);
+	struct display *(*display_fb_init)(int, int, char *,
+	    int, struct machine *);
+	void (*display_check_event)(struct emul *);
 };
 
-void x11_redraw_cursor(struct machine *, int);
-void x11_redraw(struct machine *, int);
-void x11_putpixel_fb(struct machine *, int, int x, int y, int color);
+void display_redraw_cursor(struct machine *, int);
 
-#ifdef WITH_X11
-void x11_putimage_fb(struct machine *, int);
+void display_redraw(struct machine *, int);
+
+void display_putpixel_fb(struct machine *, int, int x, int y, int color);
+
+#if defined(WITH_X11) || define(WITH_SDL)
+void display_putimage_fb(struct machine *, int);
 #endif
 
-void x11_init(struct machine *);
-void x11_fb_resize(struct x11_window *win, int new_xsize, int new_ysize);
-void x11_set_standard_properties(struct x11_window *x11_window);
-struct x11_window *x11_fb_init(int xsize, int ysize, char *name,
+void display_init(struct machine *);
+
+void display_fb_resize(struct display *disp, int new_xsize, int new_ysize);
+
+void display_set_standard_properties(struct display *disp);
+
+struct display *display_fb_init(int xsize, int ysize, char *name,
 	int scaledown, struct machine *);
-void x11_check_event(struct emul *emul);
+
+void display_check_event(struct emul *emul);
 
 
-#endif	/*  X11_H  */
+#endif	/*  DISPLAY_H  */

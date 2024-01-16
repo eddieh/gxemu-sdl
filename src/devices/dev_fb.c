@@ -179,12 +179,12 @@ void dev_fb_resize(struct vfb_data *d, int new_xsize, int new_ysize)
 	set_title(d);
 
 #ifdef WITH_X11
-	if (d->fb_window != NULL) {
-		x11_fb_resize(d->fb_window, d->x11_xsize, d->x11_ysize);
-		if (d->fb_window->name != NULL)
-			free(d->fb_window->name);
-		d->fb_window->name = strdup(d->title);
-		x11_set_standard_properties(d->fb_window);
+	if (d->x11_window != NULL) {
+		x11_fb_resize(d->x11_window, d->x11_xsize, d->x11_ysize);
+		if (d->x11_window->name != NULL)
+			free(d->x11_window->name);
+		d->x11_window->name = strdup(d->title);
+		x11_set_standard_properties(d->x11_window);
 	}
 #endif
 }
@@ -206,12 +206,12 @@ void dev_fb_setcursor(struct vfb_data *d, int cursor_x, int cursor_y, int on,
 		cursor_y = d->ysize - cursor_ysize;
 
 #ifdef WITH_X11
-	if (d->fb_window != NULL) {
-		d->fb_window->cursor_x      = cursor_x;
-		d->fb_window->cursor_y      = cursor_y;
-		d->fb_window->cursor_on     = on;
-		d->fb_window->cursor_xsize  = cursor_xsize;
-		d->fb_window->cursor_ysize  = cursor_ysize;
+	if (d->x11_window != NULL) {
+		d->x11_window->cursor_x      = cursor_x;
+		d->x11_window->cursor_y      = cursor_y;
+		d->x11_window->cursor_on     = on;
+		d->x11_window->cursor_xsize  = cursor_xsize;
+		d->x11_window->cursor_ysize  = cursor_ysize;
 	}
 #endif
 
@@ -484,47 +484,47 @@ DEVICE_TICK(fb)
 
 #ifdef WITH_X11
 	/*  Do we need to redraw the cursor?  */
-	if (d->fb_window->cursor_on != d->fb_window->OLD_cursor_on ||
-	    d->fb_window->cursor_x != d->fb_window->OLD_cursor_x ||
-	    d->fb_window->cursor_y != d->fb_window->OLD_cursor_y ||
-	    d->fb_window->cursor_xsize != d->fb_window->OLD_cursor_xsize ||
-	    d->fb_window->cursor_ysize != d->fb_window->OLD_cursor_ysize)
+	if (d->x11_window->cursor_on != d->x11_window->OLD_cursor_on ||
+	    d->x11_window->cursor_x != d->x11_window->OLD_cursor_x ||
+	    d->x11_window->cursor_y != d->x11_window->OLD_cursor_y ||
+	    d->x11_window->cursor_xsize != d->x11_window->OLD_cursor_xsize ||
+	    d->x11_window->cursor_ysize != d->x11_window->OLD_cursor_ysize)
 		need_to_redraw_cursor = 1;
 
 	if (d->update_x2 != -1) {
-		if (((d->update_x1 >= d->fb_window->OLD_cursor_x &&
-		      d->update_x1 < (d->fb_window->OLD_cursor_x +
-		      d->fb_window->OLD_cursor_xsize)) ||
-		     (d->update_x2 >= d->fb_window->OLD_cursor_x &&
-		      d->update_x2 < (d->fb_window->OLD_cursor_x +
-		      d->fb_window->OLD_cursor_xsize)) ||
-		     (d->update_x1 <  d->fb_window->OLD_cursor_x &&
-		      d->update_x2 >= (d->fb_window->OLD_cursor_x +
-		      d->fb_window->OLD_cursor_xsize)) ) &&
-		   ( (d->update_y1 >= d->fb_window->OLD_cursor_y &&
-		      d->update_y1 < (d->fb_window->OLD_cursor_y +
-		      d->fb_window->OLD_cursor_ysize)) ||
-		     (d->update_y2 >= d->fb_window->OLD_cursor_y &&
-		      d->update_y2 < (d->fb_window->OLD_cursor_y +
-		      d->fb_window->OLD_cursor_ysize)) ||
-		     (d->update_y1 <  d->fb_window->OLD_cursor_y &&
-		      d->update_y2 >= (d->fb_window->OLD_cursor_y +
-		     d->fb_window->OLD_cursor_ysize)) ) )
+		if (((d->update_x1 >= d->x11_window->OLD_cursor_x &&
+		      d->update_x1 < (d->x11_window->OLD_cursor_x +
+		      d->x11_window->OLD_cursor_xsize)) ||
+		     (d->update_x2 >= d->x11_window->OLD_cursor_x &&
+		      d->update_x2 < (d->x11_window->OLD_cursor_x +
+		      d->x11_window->OLD_cursor_xsize)) ||
+		     (d->update_x1 <  d->x11_window->OLD_cursor_x &&
+		      d->update_x2 >= (d->x11_window->OLD_cursor_x +
+		      d->x11_window->OLD_cursor_xsize)) ) &&
+		   ( (d->update_y1 >= d->x11_window->OLD_cursor_y &&
+		      d->update_y1 < (d->x11_window->OLD_cursor_y +
+		      d->x11_window->OLD_cursor_ysize)) ||
+		     (d->update_y2 >= d->x11_window->OLD_cursor_y &&
+		      d->update_y2 < (d->x11_window->OLD_cursor_y +
+		      d->x11_window->OLD_cursor_ysize)) ||
+		     (d->update_y1 <  d->x11_window->OLD_cursor_y &&
+		      d->update_y2 >= (d->x11_window->OLD_cursor_y +
+		     d->x11_window->OLD_cursor_ysize)) ) )
 			need_to_redraw_cursor = 1;
 	}
 
 	if (need_to_redraw_cursor) {
 		/*  Remove old cursor, if any:  */
-		if (d->fb_window->OLD_cursor_on) {
-			XPutImage(d->fb_window->x11_display,
-			    d->fb_window->x11_fb_window,
-			    d->fb_window->x11_fb_gc, d->fb_window->fb_ximage,
-			    d->fb_window->OLD_cursor_x/d->vfb_scaledown,
-			    d->fb_window->OLD_cursor_y/d->vfb_scaledown,
-			    d->fb_window->OLD_cursor_x/d->vfb_scaledown,
-			    d->fb_window->OLD_cursor_y/d->vfb_scaledown,
-			    d->fb_window->OLD_cursor_xsize/d->vfb_scaledown + 1,
-			    d->fb_window->OLD_cursor_ysize/d->vfb_scaledown +1);
+		if (d->x11_window->OLD_cursor_on) {
+			XPutImage(d->x11_window->x11_display,
+			    d->x11_window->x11_window,
+			    d->x11_window->x11_fb_gc, d->x11_window->fb_ximage,
+			    d->x11_window->OLD_cursor_x/d->vfb_scaledown,
+			    d->x11_window->OLD_cursor_y/d->vfb_scaledown,
+			    d->x11_window->OLD_cursor_x/d->vfb_scaledown,
+			    d->x11_window->OLD_cursor_y/d->vfb_scaledown,
+			    d->x11_window->OLD_cursor_xsize/d->vfb_scaledown + 1,
+			    d->x11_window->OLD_cursor_ysize/d->vfb_scaledown +1);
 		}
 	}
 #endif
@@ -566,8 +566,8 @@ DEVICE_TICK(fb)
 			addr2 += d->bytes_per_line * q;
 		}
 
-		XPutImage(d->fb_window->x11_display, d->fb_window->
-		    x11_fb_window, d->fb_window->x11_fb_gc, d->fb_window->
+		XPutImage(d->x11_window->x11_display, d->x11_window->
+		    x11_window, d->x11_window->x11_fb_gc, d->x11_window->
 		    fb_ximage, d->update_x1/d->vfb_scaledown, d->update_y1/
 		    d->vfb_scaledown, d->update_x1/d->vfb_scaledown,
 		    d->update_y1/d->vfb_scaledown,
@@ -584,15 +584,15 @@ DEVICE_TICK(fb)
 #ifdef WITH_X11
 	if (need_to_redraw_cursor) {
 		/*  Paint new cursor:  */
-		if (d->fb_window->cursor_on) {
+		if (d->x11_window->cursor_on) {
 			x11_redraw_cursor(cpu->machine,
-			    d->fb_window->fb_number);
-			d->fb_window->OLD_cursor_on = d->fb_window->cursor_on;
-			d->fb_window->OLD_cursor_x = d->fb_window->cursor_x;
-			d->fb_window->OLD_cursor_y = d->fb_window->cursor_y;
-			d->fb_window->OLD_cursor_xsize = d->fb_window->
+			    d->x11_window->fb_number);
+			d->x11_window->OLD_cursor_on = d->x11_window->cursor_on;
+			d->x11_window->OLD_cursor_x = d->x11_window->cursor_x;
+			d->x11_window->OLD_cursor_y = d->x11_window->cursor_y;
+			d->x11_window->OLD_cursor_xsize = d->x11_window->
 			    cursor_xsize;
-			d->fb_window->OLD_cursor_ysize = d->fb_window->
+			d->x11_window->OLD_cursor_ysize = d->x11_window->
 			    cursor_ysize;
 			need_to_flush_x11 = 1;
 		}
@@ -601,7 +601,7 @@ DEVICE_TICK(fb)
 
 #ifdef WITH_X11
 	if (need_to_flush_x11)
-		XFlush(d->fb_window->x11_display);
+		XFlush(d->x11_window->x11_display);
 #endif
 }
 
@@ -837,21 +837,21 @@ struct vfb_data *dev_fb_init(struct machine *machine, struct memory *mem,
 #ifdef WITH_X11
 	if (mda_attached(machine)) {
 		int i = 0;
-		d->fb_window = x11_fb_init(d->x11_xsize, d->x11_ysize,
+		d->x11_window = x11_fb_init(d->x11_xsize, d->x11_ysize,
 		    d->title, mda_x11(machine).scaledown, machine);
-		switch (d->fb_window->x11_screen_depth) {
+		switch (d->x11_window->x11_screen_depth) {
 		case 15: i = 2; break;
 		case 16: i = 4; break;
 		case 24: i = 6; break;
 		}
-		if (d->fb_window->fb_ximage->byte_order)
+		if (d->x11_window->fb_ximage->byte_order)
 			i ++;
 		if (d->vfb_scaledown > 1)
 			i += 8;
 		d->redraw_func = redraw[i];
 	} else
 #endif
-		d->fb_window = NULL;
+		d->x11_window = NULL;
 
 	nlen = strlen(name) + 10;
 	CHECK_ALLOCATION(name2 = (char *) malloc(nlen));

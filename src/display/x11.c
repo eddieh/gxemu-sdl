@@ -48,7 +48,7 @@ void x11_redraw_cursor(struct machine *m, int i) { }
 void x11_redraw(struct machine *m, int x) { }
 void x11_putpixel_fb(struct machine *m, int fb, int x, int y, int color) { }
 void x11_init(struct machine *machine) { }
-struct fb_window *x11_fb_init(int xsize, int ysize, char *name,
+struct x11_window *x11_fb_init(int xsize, int ysize, char *name,
 	int scaledown, struct machine *machine)
     { return NULL; }
 void x11_check_event(struct emul *emul) { }
@@ -63,7 +63,7 @@ void x11_check_event(struct emul *emul) { }
 
 static bool left_ctrl = false;
 static bool left_alt = false;
-static struct fb_window *grabbed = NULL;
+static struct x11_window *grabbed = NULL;
 static bool mouseExplicityMoved = false;
 static int mouseXbeforeGrab = 0;
 static int mouseYbeforeGrab = 0;
@@ -78,10 +78,10 @@ static void x11_unhide_cursor()
 	if (!mouseCursorHidden)
 		return;
 
-	struct fb_window *fbwin = grabbed;
+	struct x11_window *fbwin = grabbed;
 
 	/*  Remove the old X11 host cursor:  */
-	XUndefineCursor(fbwin->x11_display, fbwin->x11_fb_window);
+	XUndefineCursor(fbwin->x11_display, fbwin->x11_window);
 	XFreeCursor(fbwin->x11_display, fbwin->host_cursor);
 	fbwin->host_cursor = 0;
 
@@ -94,7 +94,7 @@ static void x11_hide_cursor()
 	if (mouseCursorHidden)
 		return;
 
-	struct fb_window *fbwin = grabbed;
+	struct x11_window *fbwin = grabbed;
 
 	/*  Create a new "empy" X11 host cursor:  */
 	if (fbwin->host_cursor_pixmap != 0) {
@@ -102,7 +102,7 @@ static void x11_hide_cursor()
 		fbwin->host_cursor_pixmap = 0;
 	}
 
-	fbwin->host_cursor_pixmap = XCreatePixmap(fbwin->x11_display, fbwin->x11_fb_window, 1, 1, 1);
+	fbwin->host_cursor_pixmap = XCreatePixmap(fbwin->x11_display, fbwin->x11_window, 1, 1, 1);
 	XSetForeground(fbwin->x11_display, fbwin->x11_fb_gc, fbwin->x11_graycolor[0].pixel);
 
 	GC tmpgc = XCreateGC(fbwin->x11_display, fbwin->host_cursor_pixmap, 0,0);
@@ -123,13 +123,13 @@ static void x11_hide_cursor()
 	// fbwin->host_cursor = XCreateFontCursor(fbwin->x11_display, XC_coffee_mug);
 
 	if (fbwin->host_cursor != 0)
-		XDefineCursor(fbwin->x11_display, fbwin->x11_fb_window, fbwin->host_cursor);
+		XDefineCursor(fbwin->x11_display, fbwin->x11_window, fbwin->host_cursor);
 
 	mouseCursorHidden = true;
 }
 
 
-static void setMousePointerCoordinates(struct fb_window *fbwin, int x, int y)
+static void setMousePointerCoordinates(struct x11_window *fbwin, int x, int y)
 {
 	XWarpPointer(fbwin->x11_display, None,
 	    DefaultRootWindow(fbwin->x11_display), 0, 0, 0, 0, x, y);
@@ -139,7 +139,7 @@ static void setMousePointerCoordinates(struct fb_window *fbwin, int x, int y)
 }
 
 
-static void mouseMouseToCenterOfScreen(struct fb_window *fbwin)
+static void mouseMouseToCenterOfScreen(struct x11_window *fbwin)
 {
 	Screen *screen = XDefaultScreenOfDisplay(fbwin->x11_display);
 
@@ -148,7 +148,7 @@ static void mouseMouseToCenterOfScreen(struct fb_window *fbwin)
 	setMousePointerCoordinates(fbwin, screenWidth / 2, screenHeight / 2);
 }
 
-static void grab(struct fb_window *fbwin)
+static void grab(struct x11_window *fbwin)
 {
 	if (grabbed != NULL)
 		return;
@@ -169,7 +169,7 @@ static void grab(struct fb_window *fbwin)
 	mouseXbeforeGrab = rootx;
 	mouseYbeforeGrab = rooty;
 
-	res = XGrabPointer(fbwin->x11_display, fbwin->x11_fb_window, False,
+	res = XGrabPointer(fbwin->x11_display, fbwin->x11_window, False,
 	    ButtonPressMask | ButtonReleaseMask | PointerMotionMask | FocusChangeMask |
 	    EnterWindowMask | LeaveWindowMask,
 	    GrabModeAsync, GrabModeAsync,
@@ -198,7 +198,7 @@ static void ungrab()
 	if (grabbed == NULL)
 		return;
 
-	struct fb_window *fbwin = grabbed;
+	struct x11_window *fbwin = grabbed;
 
 	x11_unhide_cursor();
 
@@ -223,14 +223,14 @@ static void ungrab()
  */
 void x11_redraw_cursor(struct machine *m, int i)
 {
-	struct fb_window *fbwin = mda_x11(m).fb_windows[i];
+	struct x11_window *fbwin = mda_x11(m).x11_windows[i];
 
 	if (fbwin->x11_display == NULL)
 		return;
 
 	/*  Remove old cursor, if any:  */
 	if (fbwin->OLD_cursor_on) {
-		XPutImage(fbwin->x11_display, fbwin->x11_fb_window,
+		XPutImage(fbwin->x11_display, fbwin->x11_window,
 		    fbwin->x11_fb_gc, fbwin->fb_ximage,
 		    fbwin->OLD_cursor_x/fbwin->scaledown,
 		    fbwin->OLD_cursor_y/fbwin->scaledown,
@@ -292,7 +292,7 @@ void x11_redraw_cursor(struct machine *m, int i)
 	}
 
 	XPutImage(fbwin->x11_display,
-	    fbwin->x11_fb_window,
+	    fbwin->x11_window,
 	    fbwin->x11_fb_gc,
 	    xtmp, 0, 0,
 	    fbwin->cursor_x/fbwin->scaledown,
@@ -317,13 +317,13 @@ void x11_redraw_cursor(struct machine *m, int i)
  */
 void x11_redraw(struct machine *m, int i)
 {
-	if (i < 0 || i >= mda_x11(m).n_fb_windows ||
-	    mda_x11(m).fb_windows[i]->x11_fb_winxsize <= 0)
+	if (i < 0 || i >= mda_x11(m).n_x11_windows ||
+	    mda_x11(m).x11_windows[i]->x11_fb_winxsize <= 0)
 		return;
 
 	x11_putimage_fb(m, i);
 	x11_redraw_cursor(m, i);
-	XFlush(mda_x11(m).fb_windows[i]->x11_display);
+	XFlush(mda_x11(m).x11_windows[i]->x11_display);
 }
 
 
@@ -334,11 +334,11 @@ void x11_redraw(struct machine *m, int i)
  */
 void x11_putpixel_fb(struct machine *m, int i, int x, int y, int color)
 {
-	struct fb_window *fbwin;
-	if (i < 0 || i >= mda_x11(m).n_fb_windows)
+	struct x11_window *fbwin;
+	if (i < 0 || i >= mda_x11(m).n_x11_windows)
 		return;
 
-	fbwin = mda_x11(m).fb_windows[i];
+	fbwin = mda_x11(m).x11_windows[i];
 
 	if (fbwin->x11_fb_winxsize <= 0)
 		return;
@@ -351,7 +351,7 @@ void x11_putpixel_fb(struct machine *m, int i, int x, int y, int color)
 		    fbwin->x11_fb_gc, fbwin->bg_color);
 
 	XDrawPoint(fbwin->x11_display,
-	    fbwin->x11_fb_window, fbwin->x11_fb_gc, x, y);
+	    fbwin->x11_window, fbwin->x11_fb_gc, x, y);
 
 	XFlush(fbwin->x11_display);
 }
@@ -365,17 +365,17 @@ void x11_putpixel_fb(struct machine *m, int i, int x, int y, int color)
  */
 void x11_putimage_fb(struct machine *m, int i)
 {
-	struct fb_window *fbwin;
-	if (i < 0 || i >= mda_x11(m).n_fb_windows)
+	struct x11_window *fbwin;
+	if (i < 0 || i >= mda_x11(m).n_x11_windows)
 		return;
 
-	fbwin = mda_x11(m).fb_windows[i];
+	fbwin = mda_x11(m).x11_windows[i];
 
 	if (fbwin->x11_fb_winxsize <= 0)
 		return;
 
 	XPutImage(fbwin->x11_display,
-	    fbwin->x11_fb_window,
+	    fbwin->x11_window,
 	    fbwin->x11_fb_gc, fbwin->fb_ximage, 0,0, 0,0,
 	    fbwin->x11_fb_winxsize,
 	    fbwin->x11_fb_winysize);
@@ -393,7 +393,7 @@ void x11_putimage_fb(struct machine *m, int i)
  */
 void x11_init(struct machine *m)
 {
-	mda_x11(m).n_fb_windows = 0;
+	mda_x11(m).n_x11_windows = 0;
 
 	if (mda_x11(m).n_display_names > 0) {
 		int i;
@@ -413,7 +413,7 @@ void x11_init(struct machine *m)
  *  this kind of functionality during the initial design, so it is probably
  *  buggy. It also needs some refactoring.)
  */
-void x11_fb_resize(struct fb_window *win, int new_xsize, int new_ysize)
+void x11_fb_resize(struct x11_window *win, int new_xsize, int new_ysize)
 {
 	int alloc_depth;
 
@@ -447,7 +447,7 @@ void x11_fb_resize(struct fb_window *win, int new_xsize, int new_ysize)
 	    new_xsize, new_ysize, 8, new_xsize * alloc_depth / 8);
 	CHECK_ALLOCATION(win->fb_ximage);
 
-	XResizeWindow(win->x11_display, win->x11_fb_window,
+	XResizeWindow(win->x11_display, win->x11_window,
 	    new_xsize, new_ysize);
 }
 
@@ -457,17 +457,17 @@ void x11_fb_resize(struct fb_window *win, int new_xsize, int new_ysize)
  *
  *  Right now, this only sets the title of a window.
  */
-void x11_set_standard_properties(struct fb_window *fb_window)
+void x11_set_standard_properties(struct x11_window *x11_window)
 {
-	size_t title_maxlen = strlen(fb_window->name) + 100;
+	size_t title_maxlen = strlen(x11_window->name) + 100;
 	char *title;
 	CHECK_ALLOCATION(title = malloc(title_maxlen));
 
-	snprintf(title, title_maxlen, "%s%s", fb_window->name,
+	snprintf(title, title_maxlen, "%s%s", x11_window->name,
 	    grabbed != NULL ? " (Left CTRL+ALT to ungrab)" : "");
 
-	XSetStandardProperties(fb_window->x11_display,
-	    fb_window->x11_fb_window, title, "GXemul " VERSION,
+	XSetStandardProperties(x11_window->x11_display,
+	    x11_window->x11_window, title, "GXemul " VERSION,
 	    None, NULL, 0, NULL);
 
 	free(title);
@@ -479,29 +479,29 @@ void x11_set_standard_properties(struct fb_window *fb_window)
  *
  *  Initialize a framebuffer window.
  */
-struct fb_window *x11_fb_init(int xsize, int ysize, char *name,
+struct x11_window *x11_fb_init(int xsize, int ysize, char *name,
 	int scaledown, struct machine *m)
 {
 	Display *x11_display;
 	int x, y, fb_number = 0;
 	size_t alloclen, alloc_depth;
 	XColor tmpcolor;
-	struct fb_window *fbwin;
+	struct x11_window *fbwin;
 	int i;
 	char fg[80], bg[80];
 	char *display_name;
 
-	fb_number = mda_x11(m).n_fb_windows;
+	fb_number = mda_x11(m).n_x11_windows;
 
-	CHECK_ALLOCATION(mda_x11(m).fb_windows =
-	    (struct fb_window **) realloc(mda_x11(m).fb_windows,
-	    sizeof(struct fb_window *) * (mda_x11(m).n_fb_windows + 1)));
-	CHECK_ALLOCATION(fbwin = mda_x11(m).fb_windows[fb_number] =
-	    (struct fb_window *) malloc(sizeof(struct fb_window)));
+	CHECK_ALLOCATION(mda_x11(m).x11_windows =
+	    (struct x11_window **) realloc(mda_x11(m).x11_windows,
+	    sizeof(struct x11_window *) * (mda_x11(m).n_x11_windows + 1)));
+	CHECK_ALLOCATION(fbwin = mda_x11(m).x11_windows[fb_number] =
+	    (struct x11_window *) malloc(sizeof(struct x11_window)));
 
-	mda_x11(m).n_fb_windows ++;
+	mda_x11(m).n_x11_windows ++;
 
-	memset(fbwin, 0, sizeof(struct fb_window));
+	memset(fbwin, 0, sizeof(struct x11_window));
 
 	fbwin->x11_fb_winxsize = xsize;
 	fbwin->x11_fb_winysize = ysize;
@@ -593,7 +593,7 @@ struct fb_window *x11_fb_init(int xsize, int ysize, char *name,
 	if (alloc_depth == 15)
 		alloc_depth = 16;
 
-	fbwin->x11_fb_window = XCreateWindow(
+	fbwin->x11_window = XCreateWindow(
 	    x11_display, DefaultRootWindow(x11_display),
 	    0, 0, fbwin->x11_fb_winxsize,
 	    fbwin->x11_fb_winysize,
@@ -606,18 +606,18 @@ struct fb_window *x11_fb_init(int xsize, int ysize, char *name,
 	x11_set_standard_properties(fbwin);
 
 	XSelectInput(x11_display,
-	    fbwin->x11_fb_window,
+	    fbwin->x11_window,
 	    StructureNotifyMask | ExposureMask | ButtonPressMask | FocusChangeMask |
 	    ButtonReleaseMask | PointerMotionMask | KeyPressMask | KeyReleaseMask);
 	fbwin->x11_fb_gc = XCreateGC(x11_display,
-	    fbwin->x11_fb_window, 0,0);
+	    fbwin->x11_window, 0,0);
 
 	/*  Make sure the window is mapped:  */
-	XMapRaised(x11_display, fbwin->x11_fb_window);
+	XMapRaised(x11_display, fbwin->x11_window);
 
 	XSetBackground(x11_display, fbwin->x11_fb_gc, fbwin->bg_color);
 	XSetForeground(x11_display, fbwin->x11_fb_gc, fbwin->bg_color);
-	XFillRectangle(x11_display, fbwin->x11_fb_window, fbwin->x11_fb_gc, 0,0,
+	XFillRectangle(x11_display, fbwin->x11_window, fbwin->x11_fb_gc, 0,0,
 	    fbwin->x11_fb_winxsize, fbwin->x11_fb_winysize);
 
 	fbwin->scaledown   = scaledown;
@@ -671,8 +671,8 @@ static void x11_check_events_machine(struct emul *emul, struct machine *m)
 {
 	int fb_nr;
 
-	for (fb_nr = 0; fb_nr < mda_x11(m).n_fb_windows; fb_nr ++) {
-		struct fb_window *fbwin = mda_x11(m).fb_windows[fb_nr];
+	for (fb_nr = 0; fb_nr < mda_x11(m).n_x11_windows; fb_nr ++) {
+		struct x11_window *fbwin = mda_x11(m).x11_windows[fb_nr];
 		XEvent event;
 		bool need_redraw = false;
 

@@ -147,10 +147,10 @@ static void bt459_update_X_cursor(struct cpu *cpu, struct bt459_data *d)
 	 */
 
 #ifdef WITH_X11
-	if (mda_attached(cpu->machine) && d->vfb_data->fb_window != NULL) {
+	if (mda_attached(cpu->machine) && d->vfb_data->x11_window != NULL) {
 		for (y=0; y<=ymax; y++) {
 			for (x=0; x<=xmax; x+=4) {
-				struct fb_window *win = d->vfb_data->fb_window;
+				struct x11_window *win = d->vfb_data->x11_window;
 				int reg = BT459_REG_CRAM_BASE + y*16 + x/4;
 				unsigned char data = d->bt459_reg[reg];
 

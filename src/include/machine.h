@@ -36,7 +36,7 @@
 struct cpu_family;
 struct diskimage;
 struct emul;
-struct fb_window;
+struct x11_window;
 struct machine_arcbios;
 struct machine_pmax;
 struct memory;
@@ -79,7 +79,7 @@ struct tick_functions {
 };
 
 struct x11_md {
-	/*  X11/framebuffer stuff:  */
+	/*  X11 framebuffer  */
 	int	in_use;
 	int	scaledown;
 	int	scaleup;
@@ -87,11 +87,12 @@ struct x11_md {
 	char	**display_names;
 	int	current_display_name_nr;	/*  updated by x11.c  */
 
-	int	n_fb_windows;
-	struct fb_window **fb_windows;
+	int	n_x11_windows;
+	struct x11_window **x11_windows;
 };
 
 struct sdl_md {
+	/* SDL framebuffer */
 
 };
 

@@ -9,8 +9,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -18,7 +18,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -230,7 +230,7 @@ struct vfb_data {
 
 	/*  These should always be in sync:  */
 	unsigned char	*framebuffer;
-	struct fb_window *fb_window;
+	struct x11_window *x11_window;
 };
 #define	VFB_MFB_BT455			0x100000
 #define	VFB_MFB_BT431			0x180000
@@ -238,7 +238,7 @@ struct vfb_data {
 #define	VFB_CFB_BT459			0x200000
 void set_grayscale_palette(struct vfb_data *d, int ncolors);
 void dev_fb_resize(struct vfb_data *d, int new_xsize, int new_ysize);
-void dev_fb_setcursor(struct vfb_data *d, int cursor_x, int cursor_y, int on, 
+void dev_fb_setcursor(struct vfb_data *d, int cursor_x, int cursor_y, int on,
         int cursor_xsize, int cursor_ysize);
 void framebuffer_blockcopyfill(struct vfb_data *d, int fillflag, int fill_r,
 	int fill_g, int fill_b, int x1, int y1, int x2, int y2,
@@ -516,15 +516,15 @@ struct lk201_data {
         int                     (*space_available_in_queue)(void *,int);
         void                    (*add_to_rx_queue)(void *,int,int);
 	void			*add_data;
-                
+
         unsigned char           keyb_buf[8];
         int                     keyb_buf_pos;
-                        
+
         int                     mouse_mode;
-        int                     mouse_revision;         /*  0..15  */  
+        int                     mouse_revision;         /*  0..15  */
         int                     mouse_buttons;
 };
-void lk201_tick(struct machine *, struct lk201_data *); 
+void lk201_tick(struct machine *, struct lk201_data *);
 void lk201_tx_data(struct lk201_data *, int port, int idata);
 void lk201_init(struct lk201_data *d, int use_fb,
 	int (*space_available_in_queue)(void *,int),
@@ -533,4 +533,3 @@ void lk201_init(struct lk201_data *d, int use_fb,
 
 
 #endif	/*  DEVICES_H  */
-

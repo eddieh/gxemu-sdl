@@ -6,8 +6,8 @@
  *
  *  1. Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
  *     documentation and/or other materials provided with the distribution.
  *  3. The name of the author may not be used to endorse or promote products
  *     derived from this software without specific prior written permission.
@@ -15,7 +15,7 @@
  *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
+ *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -23,12 +23,12 @@
  *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  *  SUCH DAMAGE.
- *   
+ *
  *
  *  Included from dev_fb.c.
  *
  *  FB_SCALEDOWN should be defined if d->vfb_scaledown > 1.
- *  FB_BO for d->fb_window->fb_ximage->byte_order non-zero
+ *  FB_BO for d->x11_window->fb_ximage->byte_order non-zero
  *  FB_24 for 24-bit X11 color.
  *  FB_16 for 16-bit X11 color.
  *  FB_15 for 15-bit X11 color.
@@ -67,7 +67,7 @@
 #endif
 
 #else	/*  !15  */
-#define	macro_put_pixel1 color = d->fb_window->x11_graycolor[15 * 	\
+#define	macro_put_pixel1 color = d->x11_window->x11_graycolor[15 * 	\
 		(r + g + b) / (255 * 3)].pixel
 
 #endif	/*  !15  */
@@ -83,7 +83,7 @@
 
 #define macro_put_pixel		macro_put_pixel1;			\
 	if (x>=0 && x<d->x11_xsize && y>=0 && y<d->x11_ysize)		\
-		XPutPixel(d->fb_window->fb_ximage, x, y, color);	\
+		XPutPixel(d->x11_window->fb_ximage, x, y, color);	\
 
 
 void REDRAW(struct vfb_data *d, int addr, int len)
@@ -362,4 +362,3 @@ void REDRAW(struct vfb_data *d, int addr, int len)
 	}
 #endif	/*  FB_SCALEDOWN  */
 }
-

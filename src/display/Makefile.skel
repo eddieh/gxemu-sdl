@@ -7,7 +7,7 @@
 
 CFLAGS=$(CWARNINGS) $(COPTIM) $(XINCLUDE) $(SDLINCLUDE) $(DINCLUDE)
 
-OBJS=console.o
+OBJS=display.o x11.o sdl.o
 
 all: $(OBJS)
 

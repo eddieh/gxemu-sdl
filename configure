@@ -1161,7 +1161,7 @@ INCLUDE2=-I../../include/
 rm -f _testprog.c*
 
 echo C compiler flags: $CFLAGS $CWARNINGS
-echo Linker flags: $OTHERLIBS
+echo Linker flags: $OTHERLIBS # $XLIB $SDLLIB
 if [ z"$DESTDIR" != z ]; then
 	echo "Destination dir: $DESTDIR"
 fi
@@ -1181,7 +1181,8 @@ echo "" >> _Makefile.header
 
 #  Create the Makefiles:
 D=". src src/console src/cpus src/debugger src/devices src/core"
-D="$D src/devices/fonts src/disk src/file src/include src/machines"
+D="$D src/devices/fonts src/disk src/display"
+D="$D src/file src/include src/machines"
 D="$D src/net src/promemul src/symbol"
 echo "creating Makefiles..."
 for a in $D; do
