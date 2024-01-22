@@ -29,6 +29,7 @@
  */
 
 #include <stdbool.h>
+#include <stdio.h>
 #include <sys/types.h>
 
 #include "symbol.h"
@@ -37,11 +38,13 @@ struct cpu_family;
 struct diskimage;
 struct emul;
 struct x11_window;
+struct sdl_window;
 struct machine_arcbios;
 struct machine_pmax;
 struct memory;
 struct of_data;
 struct settings;
+struct display;
 
 
 /*  TODO: This should probably go away...  */
@@ -86,14 +89,10 @@ struct x11_md {
 	int	n_display_names;
 	char	**display_names;
 	int	current_display_name_nr;	/*  updated by x11.c  */
-
-	int	n_x11_windows;
-	struct x11_window **x11_windows;
 };
 
 struct sdl_md {
 	/* SDL framebuffer */
-
 };
 
 #define display_mode_unknown  0
@@ -112,6 +111,8 @@ struct display_adapter {
 		struct x11_md x11_md;
 		struct sdl_md sdl_md;
 	};
+	int n_displays;
+	struct display **displays;
 };
 
 #define mda(m) (m->display_adapter)
@@ -122,6 +123,8 @@ struct display_adapter {
 
 #define mda_x11(m) (mda(m).x11_md)
 #define mda_sdl(m) (mda(m).sdl_md)
+
+#define mda_display(m) (mda(m).displays[mda(m).n_displays - 1])
 
 /*
  *  The machine struct:
@@ -202,8 +205,7 @@ struct machine {
 	/*  Instruction statistics:  */
 	struct statistics statistics;
 
-	/*  X11/framebuffer stuff (per machine):  */
-	//struct x11_md x11_md;
+	/*  X11/SDL framebuffer stuff (per machine):  */
 	struct display_adapter display_adapter;
 
 	/*  Machine-dependent: (PROM stuff, etc.)  */

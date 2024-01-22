@@ -38,6 +38,7 @@
 #include "memory.h"
 #include "misc.h"
 #include "x11.h"
+#include "display.h"
 
 #include "thirdparty/bt459.h"
 
@@ -147,10 +148,10 @@ static void bt459_update_X_cursor(struct cpu *cpu, struct bt459_data *d)
 	 */
 
 #ifdef WITH_X11
-	if (mda_attached(cpu->machine) && d->vfb_data->x11_window != NULL) {
+	if (mda_attached(cpu->machine) && disp_x11_window(d->vfb_data) != NULL) {
 		for (y=0; y<=ymax; y++) {
 			for (x=0; x<=xmax; x+=4) {
-				struct x11_window *win = d->vfb_data->x11_window;
+				struct x11_window *win = disp_x11_window(d->vfb_data);
 				int reg = BT459_REG_CRAM_BASE + y*16 + x/4;
 				unsigned char data = d->bt459_reg[reg];
 

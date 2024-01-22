@@ -67,7 +67,7 @@
 #endif
 
 #else	/*  !15  */
-#define	macro_put_pixel1 color = d->x11_window->x11_graycolor[15 * 	\
+#define	macro_put_pixel1 color = disp_x11_window(d)->x11_graycolor[15 * 	\
 		(r + g + b) / (255 * 3)].pixel
 
 #endif	/*  !15  */
@@ -82,8 +82,8 @@
 #endif
 
 #define macro_put_pixel		macro_put_pixel1;			\
-	if (x>=0 && x<d->x11_xsize && y>=0 && y<d->x11_ysize)		\
-		XPutPixel(d->x11_window->fb_ximage, x, y, color);	\
+	if (x>=0 && x<d->fb_xsize && y>=0 && y<d->fb_ysize)		\
+		XPutPixel(disp_x11_window(d)->fb_ximage, x, y, color);	\
 
 
 void REDRAW(struct vfb_data *d, int addr, int len)

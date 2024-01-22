@@ -54,6 +54,7 @@ struct machine;
 struct memory;
 struct pci_data;
 struct timer;
+struct display;
 
 /* #ifdef WITH_X11
 #include <X11/Xlib.h>
@@ -216,7 +217,7 @@ struct vfb_data {
 	int		visible_ysize;
 
 	size_t		framebuffer_size;
-	int		x11_xsize, x11_ysize;
+	int		fb_xsize, fb_ysize;
 
 	int		update_x1, update_y1, update_x2, update_y2;
 
@@ -230,7 +231,7 @@ struct vfb_data {
 
 	/*  These should always be in sync:  */
 	unsigned char	*framebuffer;
-	struct x11_window *x11_window;
+	struct display *display;
 };
 #define	VFB_MFB_BT455			0x100000
 #define	VFB_MFB_BT431			0x180000
@@ -249,6 +250,8 @@ int dev_fb_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr,
 struct vfb_data *dev_fb_init(struct machine *machine, struct memory *mem,
 	uint64_t baseaddr, int vfb_type, int visible_xsize, int visible_ysize,
 	int xsize, int ysize, int bit_depth, const char *name);
+#define disp(d)        (d->display)
+#define disp_x11_window(d) (d->display->x11_window)
 
 /*  dev_gt.c:  */
 #define	DEV_GT_LENGTH			0x1000

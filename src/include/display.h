@@ -48,9 +48,6 @@ struct sdl_window;
 #define	CURSOR_MAXX			64
 
 struct display {
-	int		fb_number;
-	char		*name;
-
 	union {
 		struct x11_window *x11_window;
 		struct sdl_window *sdl_window;
@@ -79,7 +76,7 @@ void display_redraw(struct machine *, int);
 
 void display_putpixel_fb(struct machine *, int, int x, int y, int color);
 
-#if defined(WITH_X11) || define(WITH_SDL)
+#if defined(WITH_X11) || defined(WITH_SDL)
 void display_putimage_fb(struct machine *, int);
 #endif
 

@@ -35,6 +35,7 @@
 #include "misc.h"
 
 struct emul;
+struct display;
 
 #ifdef WITH_X11
 #include <X11/Xlib.h>
@@ -98,9 +99,9 @@ void x11_putimage_fb(struct machine *, int);
 #endif
 
 void x11_init(struct machine *);
-void x11_fb_resize(struct x11_window *win, int new_xsize, int new_ysize);
-void x11_set_standard_properties(struct x11_window *x11_window);
-struct x11_window *x11_fb_init(int xsize, int ysize, char *name,
+void x11_fb_resize(struct display *disp, int new_xsize, int new_ysize);
+void x11_set_standard_properties(struct display *disp);
+struct display *x11_fb_init(int xsize, int ysize, char *name,
 	int scaledown, struct machine *);
 void x11_check_event(struct emul *emul);
 

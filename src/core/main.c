@@ -456,7 +456,8 @@ int get_cmd_args(int argc, char *argv[], struct emul *emul,
 			machine_specific_options_used = true;
 			/*  FALL-THROUGH  */
 		case 'x':
-			console_allow_slaves(1);
+			/* FIXME: tuned off because opening a xterm is annoying */
+			/* console_allow_slaves(1); */
 			break;
 		case 'Y':
 			mda_x11(m).scaledown = atoi(optarg);

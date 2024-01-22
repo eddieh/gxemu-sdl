@@ -50,6 +50,7 @@
 #include "net.h"
 #include "settings.h"
 #include "timer.h"
+#include "display.h"
 #include "x11.h"
 
 
@@ -447,7 +448,7 @@ bool emul_machine_setup(struct machine *m, int n_load, char **load_names,
 	cpu = m->cpus[m->bootstrap_cpu];
 
 	if (mda_attached(m))
-		x11_init(m);
+		display_init(m);
 
 	/*  Fill the directly addressable memory with random bytes:  */
 	if (m->random_mem_contents) {
@@ -924,7 +925,11 @@ void emul_run(struct emul *emul)
 		}
 
 		if (any_cpu_running && idling) {
-			x11_check_event(emul);
+			/* FIXME: this should be machine dependent */
+			if (mda_using_x11(emul->machines[0])) {
+				x11_check_event(emul);
+			}
+
 			console_flush();
 
 			if (console_any_input_available(emul)) {
@@ -945,7 +950,11 @@ void emul_run(struct emul *emul)
 
 		/*  Flush X11 and serial console output every now and then:  */
 		if (bootcpu->ninstrs > bootcpu->ninstrs_flush + (1<<19)) {
-			x11_check_event(emul);
+			/* FIXME: this should be machine dependent */
+			if (mda_using_x11(emul->machines[0])) {
+				x11_check_event(emul);
+			}
+
 			console_flush();
 			bootcpu->ninstrs_flush = bootcpu->ninstrs;
 		}

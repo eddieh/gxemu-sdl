@@ -38,6 +38,7 @@
 #include "machine.h"
 #include "misc.h"
 #include "x11.h"
+#include "display.h"
 
 
 #ifndef	WITH_X11
@@ -48,7 +49,7 @@ void x11_redraw_cursor(struct machine *m, int i) { }
 void x11_redraw(struct machine *m, int x) { }
 void x11_putpixel_fb(struct machine *m, int fb, int x, int y, int color) { }
 void x11_init(struct machine *machine) { }
-struct x11_window *x11_fb_init(int xsize, int ysize, char *name,
+struct display *x11_fb_init(int xsize, int ysize, char *name,
 	int scaledown, struct machine *machine)
     { return NULL; }
 void x11_check_event(struct emul *emul) { }
@@ -72,6 +73,22 @@ static int mouseYofLastEvent = 0;
 
 static bool mouseCursorHidden = false;
 
+/* Only sets the title of a window. */
+void x11_set_window_properties(struct x11_window *x11_window)
+{
+	size_t title_maxlen = strlen(x11_window->name) + 100;
+	char *title;
+	CHECK_ALLOCATION(title = malloc(title_maxlen));
+
+	snprintf(title, title_maxlen, "%s%s", x11_window->name,
+	    grabbed != NULL ? " (Left CTRL+ALT to ungrab)" : "");
+
+	XSetStandardProperties(x11_window->x11_display,
+	    x11_window->x11_window, title, "GXemul " VERSION,
+	    None, NULL, 0, NULL);
+
+	free(title);
+}
 
 static void x11_unhide_cursor()
 {
@@ -189,7 +206,7 @@ static void grab(struct x11_window *fbwin)
 
 	mouseMouseToCenterOfScreen(fbwin);
 
-	x11_set_standard_properties(fbwin);
+	x11_set_window_properties(fbwin);
 }
 
 
@@ -204,7 +221,7 @@ static void ungrab()
 
 	grabbed = NULL;
 
-	x11_set_standard_properties(fbwin);
+	x11_set_window_properties(fbwin);
 
 	debugmsg(SUBSYS_X11, "grab", VERBOSITY_DEBUG, "Releasing grab.");
 
@@ -223,7 +240,8 @@ static void ungrab()
  */
 void x11_redraw_cursor(struct machine *m, int i)
 {
-	struct x11_window *fbwin = mda_x11(m).x11_windows[i];
+	struct display *disp = mda(m).displays[i];
+	struct x11_window *fbwin = disp->x11_window;
 
 	if (fbwin->x11_display == NULL)
 		return;
@@ -317,13 +335,23 @@ void x11_redraw_cursor(struct machine *m, int i)
  */
 void x11_redraw(struct machine *m, int i)
 {
-	if (i < 0 || i >= mda_x11(m).n_x11_windows ||
-	    mda_x11(m).x11_windows[i]->x11_fb_winxsize <= 0)
+	struct display *disp;
+	struct x11_window *fbwin;
+
+	if (i < 0)
+		return;
+	if (i >= mda(m).n_displays)
+		return;
+
+	disp = mda(m).displays[i];
+	fbwin = disp->x11_window;
+
+	if (fbwin->x11_fb_winxsize <= 0)
 		return;
 
 	x11_putimage_fb(m, i);
 	x11_redraw_cursor(m, i);
-	XFlush(mda_x11(m).x11_windows[i]->x11_display);
+	XFlush(fbwin->x11_display);
 }
 
 
@@ -334,11 +362,16 @@ void x11_redraw(struct machine *m, int i)
  */
 void x11_putpixel_fb(struct machine *m, int i, int x, int y, int color)
 {
+	struct display *disp;
 	struct x11_window *fbwin;
-	if (i < 0 || i >= mda_x11(m).n_x11_windows)
+
+	if (i < 0)
+		return;
+	if (i >= mda(m).n_displays)
 		return;
 
-	fbwin = mda_x11(m).x11_windows[i];
+	disp = mda(m).displays[i];
+	fbwin = disp->x11_window;
 
 	if (fbwin->x11_fb_winxsize <= 0)
 		return;
@@ -365,11 +398,16 @@ void x11_putpixel_fb(struct machine *m, int i, int x, int y, int color)
  */
 void x11_putimage_fb(struct machine *m, int i)
 {
+	struct display *disp;
 	struct x11_window *fbwin;
-	if (i < 0 || i >= mda_x11(m).n_x11_windows)
+
+	if (i < 0)
+		return;
+	if (i >= mda(m).n_displays)
 		return;
 
-	fbwin = mda_x11(m).x11_windows[i];
+	disp = mda(m).displays[i];
+	fbwin = disp->x11_window;
 
 	if (fbwin->x11_fb_winxsize <= 0)
 		return;
@@ -393,14 +431,10 @@ void x11_putimage_fb(struct machine *m, int i)
  */
 void x11_init(struct machine *m)
 {
-	mda_x11(m).n_x11_windows = 0;
-
-	if (mda_x11(m).n_display_names > 0) {
-		int i;
-		for (i=0; i<mda_x11(m).n_display_names; i++)
+	if (mda_x11(m).n_display_names > 0)
+		for (int i = 0; i < mda_x11(m).n_display_names; i++)
 			debugmsg(SUBSYS_X11, "init", VERBOSITY_INFO,
 			    "using X11 display: %s", mda_x11(m).display_names[i]);
-	}
 
 	mda_x11(m).current_display_name_nr = 0;
 }
@@ -413,64 +447,57 @@ void x11_init(struct machine *m)
  *  this kind of functionality during the initial design, so it is probably
  *  buggy. It also needs some refactoring.)
  */
-void x11_fb_resize(struct x11_window *win, int new_xsize, int new_ysize)
+void x11_fb_resize(struct display *disp, int new_xsize, int new_ysize)
 {
+	struct x11_window *fbwin;
 	int alloc_depth;
 
-	if (win == NULL) {
-		debugmsg(SUBSYS_X11, "resize", VERBOSITY_ERROR, "win == NULL");
+	fbwin = disp->x11_window;
+
+	if (fbwin == NULL) {
+		debugmsg(SUBSYS_X11, "resize", VERBOSITY_ERROR, "fbwin == NULL");
 		return;
 	}
 
-	win->x11_fb_winxsize = new_xsize;
-	win->x11_fb_winysize = new_ysize;
+	fbwin->x11_fb_winxsize = new_xsize;
+	fbwin->x11_fb_winysize = new_ysize;
 
-	alloc_depth = win->x11_screen_depth;
+	alloc_depth = fbwin->x11_screen_depth;
 	if (alloc_depth == 24)
 		alloc_depth = 32;
 	if (alloc_depth == 15)
 		alloc_depth = 16;
 
 	/*  Note: ximage_data seems to be freed by XDestroyImage below.  */
-	/*  if (win->ximage_data != NULL)
-		free(win->ximage_data);  */
-	CHECK_ALLOCATION(win->ximage_data = (unsigned char *) malloc(
+	/*  if (fbwin->ximage_data != NULL)
+		free(fbwin->ximage_data);  */
+	CHECK_ALLOCATION(fbwin->ximage_data = (unsigned char *) malloc(
 	    new_xsize * new_ysize * alloc_depth / 8));
 
 	/*  TODO: clear for non-truecolor modes  */
-	memset(win->ximage_data, 0, new_xsize * new_ysize * alloc_depth / 8);
+	memset(fbwin->ximage_data, 0, new_xsize * new_ysize * alloc_depth / 8);
 
-	if (win->fb_ximage != NULL)
-		XDestroyImage(win->fb_ximage);
-	win->fb_ximage = XCreateImage(win->x11_display, CopyFromParent,
-	    win->x11_screen_depth, ZPixmap, 0, (char *)win->ximage_data,
+	if (fbwin->fb_ximage != NULL)
+		XDestroyImage(fbwin->fb_ximage);
+	fbwin->fb_ximage = XCreateImage(fbwin->x11_display, CopyFromParent,
+	    fbwin->x11_screen_depth, ZPixmap, 0, (char *)fbwin->ximage_data,
 	    new_xsize, new_ysize, 8, new_xsize * alloc_depth / 8);
-	CHECK_ALLOCATION(win->fb_ximage);
+	CHECK_ALLOCATION(fbwin->fb_ximage);
 
-	XResizeWindow(win->x11_display, win->x11_window,
+	XResizeWindow(fbwin->x11_display, fbwin->x11_window,
 	    new_xsize, new_ysize);
 }
-
 
 /*
  *  x11_set_standard_properties():
  *
- *  Right now, this only sets the title of a window.
+ *  Calls x11_set_window_properties
  */
-void x11_set_standard_properties(struct x11_window *x11_window)
+void x11_set_standard_properties(struct display *disp)
 {
-	size_t title_maxlen = strlen(x11_window->name) + 100;
-	char *title;
-	CHECK_ALLOCATION(title = malloc(title_maxlen));
-
-	snprintf(title, title_maxlen, "%s%s", x11_window->name,
-	    grabbed != NULL ? " (Left CTRL+ALT to ungrab)" : "");
-
-	XSetStandardProperties(x11_window->x11_display,
-	    x11_window->x11_window, title, "GXemul " VERSION,
-	    None, NULL, 0, NULL);
-
-	free(title);
+	struct x11_window *x11_window;
+	x11_window = disp->x11_window;
+	x11_set_window_properties(x11_window);
 }
 
 
@@ -479,7 +506,7 @@ void x11_set_standard_properties(struct x11_window *x11_window)
  *
  *  Initialize a framebuffer window.
  */
-struct x11_window *x11_fb_init(int xsize, int ysize, char *name,
+struct display *x11_fb_init(int xsize, int ysize, char *name,
 	int scaledown, struct machine *m)
 {
 	Display *x11_display;
@@ -490,18 +517,13 @@ struct x11_window *x11_fb_init(int xsize, int ysize, char *name,
 	int i;
 	char fg[80], bg[80];
 	char *display_name;
+	struct display *disp;
 
-	fb_number = mda_x11(m).n_x11_windows;
+	fb_number = mda(m).n_displays - 1;
 
-	CHECK_ALLOCATION(mda_x11(m).x11_windows =
-	    (struct x11_window **) realloc(mda_x11(m).x11_windows,
-	    sizeof(struct x11_window *) * (mda_x11(m).n_x11_windows + 1)));
-	CHECK_ALLOCATION(fbwin = mda_x11(m).x11_windows[fb_number] =
-	    (struct x11_window *) malloc(sizeof(struct x11_window)));
-
-	mda_x11(m).n_x11_windows ++;
-
-	memset(fbwin, 0, sizeof(struct x11_window));
+	disp = mda(m).displays[fb_number];
+	CHECK_ALLOCATION(fbwin = disp->x11_window =
+	    (struct x11_window *) calloc(1, sizeof(struct x11_window)));
 
 	fbwin->x11_fb_winxsize = xsize;
 	fbwin->x11_fb_winysize = ysize;
@@ -603,7 +625,7 @@ struct x11_window *x11_fb_init(int xsize, int ysize, char *name,
 
 	fbwin->name = strdup(name);
 
-	x11_set_standard_properties(fbwin);
+	x11_set_window_properties(fbwin);
 
 	XSelectInput(x11_display,
 	    fbwin->x11_window,
@@ -654,7 +676,7 @@ struct x11_window *x11_fb_init(int xsize, int ysize, char *name,
 		for (x=0; x<xsize; x++)
 			fbwin->cursor_pixels[y][x] = N_GRAYCOLORS-1;
 
-	return fbwin;
+	return disp;
 }
 
 
@@ -669,10 +691,12 @@ struct x11_window *x11_fb_init(int xsize, int ysize, char *name,
  */
 static void x11_check_events_machine(struct emul *emul, struct machine *m)
 {
-	int fb_nr;
+	struct display *disp;
+	struct x11_window *fbwin;
 
-	for (fb_nr = 0; fb_nr < mda_x11(m).n_x11_windows; fb_nr ++) {
-		struct x11_window *fbwin = mda_x11(m).x11_windows[fb_nr];
+	for (int fb_nr = 0; fb_nr < mda(m).n_displays; fb_nr ++) {
+		disp = mda(m).displays[fb_nr];
+		fbwin = disp->x11_window;
 		XEvent event;
 		bool need_redraw = false;
 
@@ -995,9 +1019,7 @@ static void x11_check_events_machine(struct emul *emul, struct machine *m)
  */
 void x11_check_event(struct emul *emul)
 {
-	int i;
-
-	for (i=0; i<emul->n_machines; i++)
+	for (int i = 0; i < emul->n_machines; i++)
 		x11_check_events_machine(emul, emul->machines[i]);
 }
 
