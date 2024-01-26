@@ -37,6 +37,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "sdl.h"		/* FIXME: compiler errors if not first  */
 #include "arcbios.h"
 #include "cpu.h"
 #include "emul.h"
@@ -928,6 +929,8 @@ void emul_run(struct emul *emul)
 			/* FIXME: this should be machine dependent */
 			if (mda_using_x11(emul->machines[0])) {
 				x11_check_event(emul);
+			} else {
+				sdl_check_event(emul);
 			}
 
 			console_flush();
@@ -953,6 +956,8 @@ void emul_run(struct emul *emul)
 			/* FIXME: this should be machine dependent */
 			if (mda_using_x11(emul->machines[0])) {
 				x11_check_event(emul);
+			} else {
+				sdl_check_event(emul);
 			}
 
 			console_flush();

@@ -51,6 +51,7 @@
 #include "settings.h"
 #include "timer.h"
 #include "x11.h"
+#include "sdl.h"
 
 
 extern int extra_argc;
@@ -114,8 +115,14 @@ char debugger_readchar(void)
 	int ch;
 
 	while ((ch = console_readchar(MAIN_CONSOLE)) < 0 && !exit_debugger) {
-		/*  Check for X11 events:  */
-		x11_check_event(debugger_emul);
+		/*  Check for events:  */
+
+		/* FIXME: this should be machine dependent */
+		if (mda_using_x11(debugger_emul->machines[0])) {
+			x11_check_event(debugger_emul);
+		} else {
+			sdl_check_event(debugger_emul);
+		}
 
 		/*  Give up some CPU time:  */
 		usleep(10000);
@@ -823,4 +830,3 @@ void debugger_init(struct emul *emul)
 	last_cmd_index = 0;
 	repeat_cmd[0] = '\0';
 }
-

@@ -44,6 +44,10 @@ struct display;
 #include <SDL2/SDL_main.h>
 
 struct sdl_window {
+	SDL_Window        *window;
+	SDL_Renderer      *renderer;
+	SDL_Surface       *surface;
+	SDL_Texture       *texture;
 
 };
 

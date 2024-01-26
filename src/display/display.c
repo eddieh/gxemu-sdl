@@ -72,5 +72,6 @@ void display_init(struct machine *m)
 		disp->display_check_event = display_check_event;
 	}
 
+	disp->btype = mda(m).fbtype;
 	disp->display_init(m);
 }

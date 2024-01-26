@@ -52,6 +52,7 @@
 #include "memory.h"
 #include "misc.h"
 #include "x11.h"
+#include "sdl.h"
 #include "display.h"
 
 #ifdef WITH_X11
@@ -181,11 +182,13 @@ void dev_fb_resize(struct vfb_data *d, int new_xsize, int new_ysize)
 
 #if defined(WITH_X11) || defined(WITH_SDL)
 	if (d->display != NULL) {
-		d->display->display_fb_resize(d->display, d->fb_xsize, d->fb_ysize);
-		if (disp_x11_window(d)->name != NULL)
-			free(disp_x11_window(d)->name);
-		disp_x11_window(d)->name = strdup(d->title);
-		d->display->display_set_standard_properties(d->display);
+		if (disp_using_x11(d)) {
+			d->display->display_fb_resize(d->display, d->fb_xsize, d->fb_ysize);
+			if (disp_x11_window(d)->name != NULL)
+				free(disp_x11_window(d)->name);
+			disp_x11_window(d)->name = strdup(d->title);
+			d->display->display_set_standard_properties(d->display);
+		}
 	}
 #endif
 }
@@ -208,11 +211,13 @@ void dev_fb_setcursor(struct vfb_data *d, int cursor_x, int cursor_y, int on,
 
 #if defined(WITH_X11) || defined(WITH_SDL)
 	if (d->display != NULL) {
-		disp_x11_window(d)->cursor_x      = cursor_x;
-		disp_x11_window(d)->cursor_y      = cursor_y;
-		disp_x11_window(d)->cursor_on     = on;
-		disp_x11_window(d)->cursor_xsize  = cursor_xsize;
-		disp_x11_window(d)->cursor_ysize  = cursor_ysize;
+		if (disp_using_x11(d)) {
+			disp_x11_window(d)->cursor_x      = cursor_x;
+			disp_x11_window(d)->cursor_y      = cursor_y;
+			disp_x11_window(d)->cursor_on     = on;
+			disp_x11_window(d)->cursor_xsize  = cursor_xsize;
+			disp_x11_window(d)->cursor_ysize  = cursor_ysize;
+		}
 	}
 #endif
 
@@ -315,6 +320,15 @@ void framebuffer_blockcopyfill(struct vfb_data *d, int fillflag, int fill_r,
 
 #if defined(WITH_X11) || defined(WITH_SDL)
 
+/* FIXME: Redraw is really rasterize (should change the
+ * name...). These functions take the virtual framebuffer and converts
+ * the data to drawable pixels by the host platform and graphics
+ * library. */
+
+/* The bit depth suffix is that of the host platform. The bit depth of
+ * the emulated virtual framebuffer is handled within each function
+ * (as is scaling). */
+
 #define	REDRAW	redraw_fallback
 #include "fb_include.c"
 #undef REDRAW
@@ -401,7 +415,8 @@ void (*redraw[2 * 4 * 2])(struct vfb_data *, int, int) = {
 	redraw_fallback_sd, redraw_fallback_sd,
 	redraw_15_sd, redraw_15_bo_sd,
 	redraw_16_sd, redraw_16_bo_sd,
-	redraw_24_sd, redraw_24_bo_sd  };
+	redraw_24_sd, redraw_24_bo_sd
+};
 
 #endif	/*  WITH_X11  */
 
@@ -484,48 +499,50 @@ DEVICE_TICK(fb)
 	} while (0);
 
 #if defined(WITH_X11) || defined(WITH_SDL)
-	/*  Do we need to redraw the cursor?  */
-	if (disp_x11_window(d)->cursor_on != disp_x11_window(d)->OLD_cursor_on ||
-	    disp_x11_window(d)->cursor_x != disp_x11_window(d)->OLD_cursor_x ||
-	    disp_x11_window(d)->cursor_y != disp_x11_window(d)->OLD_cursor_y ||
-	    disp_x11_window(d)->cursor_xsize != disp_x11_window(d)->OLD_cursor_xsize ||
-	    disp_x11_window(d)->cursor_ysize != disp_x11_window(d)->OLD_cursor_ysize)
-		need_to_redraw_cursor = 1;
-
-	if (d->update_x2 != -1) {
-		if (((d->update_x1 >= disp_x11_window(d)->OLD_cursor_x &&
-		      d->update_x1 < (disp_x11_window(d)->OLD_cursor_x +
-		      disp_x11_window(d)->OLD_cursor_xsize)) ||
-		     (d->update_x2 >= disp_x11_window(d)->OLD_cursor_x &&
-		      d->update_x2 < (disp_x11_window(d)->OLD_cursor_x +
-		      disp_x11_window(d)->OLD_cursor_xsize)) ||
-		     (d->update_x1 <  disp_x11_window(d)->OLD_cursor_x &&
-		      d->update_x2 >= (disp_x11_window(d)->OLD_cursor_x +
-		      disp_x11_window(d)->OLD_cursor_xsize)) ) &&
-		   ( (d->update_y1 >= disp_x11_window(d)->OLD_cursor_y &&
-		      d->update_y1 < (disp_x11_window(d)->OLD_cursor_y +
-		      disp_x11_window(d)->OLD_cursor_ysize)) ||
-		     (d->update_y2 >= disp_x11_window(d)->OLD_cursor_y &&
-		      d->update_y2 < (disp_x11_window(d)->OLD_cursor_y +
-		      disp_x11_window(d)->OLD_cursor_ysize)) ||
-		     (d->update_y1 <  disp_x11_window(d)->OLD_cursor_y &&
-		      d->update_y2 >= (disp_x11_window(d)->OLD_cursor_y +
-		     disp_x11_window(d)->OLD_cursor_ysize)) ) )
+	if (disp_using_x11(d)) {
+		/*  Do we need to redraw the cursor?  */
+		if (disp_x11_window(d)->cursor_on != disp_x11_window(d)->OLD_cursor_on ||
+		    disp_x11_window(d)->cursor_x != disp_x11_window(d)->OLD_cursor_x ||
+		    disp_x11_window(d)->cursor_y != disp_x11_window(d)->OLD_cursor_y ||
+		    disp_x11_window(d)->cursor_xsize != disp_x11_window(d)->OLD_cursor_xsize ||
+		    disp_x11_window(d)->cursor_ysize != disp_x11_window(d)->OLD_cursor_ysize)
 			need_to_redraw_cursor = 1;
-	}
 
-	if (need_to_redraw_cursor) {
-		/*  Remove old cursor, if any:  */
-		if (disp_x11_window(d)->OLD_cursor_on) {
-			XPutImage(disp_x11_window(d)->x11_display,
-			    disp_x11_window(d)->x11_window,
-			    disp_x11_window(d)->x11_fb_gc, disp_x11_window(d)->fb_ximage,
-			    disp_x11_window(d)->OLD_cursor_x/d->vfb_scaledown,
-			    disp_x11_window(d)->OLD_cursor_y/d->vfb_scaledown,
-			    disp_x11_window(d)->OLD_cursor_x/d->vfb_scaledown,
-			    disp_x11_window(d)->OLD_cursor_y/d->vfb_scaledown,
-			    disp_x11_window(d)->OLD_cursor_xsize/d->vfb_scaledown + 1,
-			    disp_x11_window(d)->OLD_cursor_ysize/d->vfb_scaledown +1);
+		if (d->update_x2 != -1) {
+			if (((d->update_x1 >= disp_x11_window(d)->OLD_cursor_x &&
+				    d->update_x1 < (disp_x11_window(d)->OLD_cursor_x +
+					disp_x11_window(d)->OLD_cursor_xsize)) ||
+				(d->update_x2 >= disp_x11_window(d)->OLD_cursor_x &&
+				    d->update_x2 < (disp_x11_window(d)->OLD_cursor_x +
+					disp_x11_window(d)->OLD_cursor_xsize)) ||
+				(d->update_x1 <  disp_x11_window(d)->OLD_cursor_x &&
+				    d->update_x2 >= (disp_x11_window(d)->OLD_cursor_x +
+					disp_x11_window(d)->OLD_cursor_xsize)) ) &&
+			    ( (d->update_y1 >= disp_x11_window(d)->OLD_cursor_y &&
+				d->update_y1 < (disp_x11_window(d)->OLD_cursor_y +
+				    disp_x11_window(d)->OLD_cursor_ysize)) ||
+				(d->update_y2 >= disp_x11_window(d)->OLD_cursor_y &&
+				    d->update_y2 < (disp_x11_window(d)->OLD_cursor_y +
+					disp_x11_window(d)->OLD_cursor_ysize)) ||
+				(d->update_y1 <  disp_x11_window(d)->OLD_cursor_y &&
+				    d->update_y2 >= (disp_x11_window(d)->OLD_cursor_y +
+					disp_x11_window(d)->OLD_cursor_ysize)) ) )
+				need_to_redraw_cursor = 1;
+		}
+
+		if (need_to_redraw_cursor) {
+			/*  Remove old cursor, if any:  */
+			if (disp_x11_window(d)->OLD_cursor_on) {
+				XPutImage(disp_x11_window(d)->x11_display,
+				    disp_x11_window(d)->x11_window,
+				    disp_x11_window(d)->x11_fb_gc, disp_x11_window(d)->fb_ximage,
+				    disp_x11_window(d)->OLD_cursor_x/d->vfb_scaledown,
+				    disp_x11_window(d)->OLD_cursor_y/d->vfb_scaledown,
+				    disp_x11_window(d)->OLD_cursor_x/d->vfb_scaledown,
+				    disp_x11_window(d)->OLD_cursor_y/d->vfb_scaledown,
+				    disp_x11_window(d)->OLD_cursor_xsize/d->vfb_scaledown + 1,
+				    disp_x11_window(d)->OLD_cursor_ysize/d->vfb_scaledown +1);
+			}
 		}
 	}
 #endif
@@ -567,14 +584,18 @@ DEVICE_TICK(fb)
 			addr2 += d->bytes_per_line * q;
 		}
 
-		XPutImage(disp_x11_window(d)->x11_display,
-		    disp_x11_window(d)->x11_window,
-		    disp_x11_window(d)->x11_fb_gc, disp_x11_window(d)->fb_ximage,
-		    d->update_x1/d->vfb_scaledown, d->update_y1/
-		    d->vfb_scaledown, d->update_x1/d->vfb_scaledown,
-		    d->update_y1/d->vfb_scaledown,
-		    (d->update_x2 - d->update_x1)/d->vfb_scaledown + 1,
-		    (d->update_y2 - d->update_y1)/d->vfb_scaledown + 1);
+		if (mda_using_x11(cpu->machine)) {
+			XPutImage(disp_x11_window(d)->x11_display,
+			    disp_x11_window(d)->x11_window,
+			    disp_x11_window(d)->x11_fb_gc,
+			    disp_x11_window(d)->fb_ximage,
+			    d->update_x1/d->vfb_scaledown,
+			    d->update_y1/d->vfb_scaledown,
+			    d->update_x1/d->vfb_scaledown,
+			    d->update_y1/d->vfb_scaledown,
+			    (d->update_x2 - d->update_x1)/d->vfb_scaledown + 1,
+			    (d->update_y2 - d->update_y1)/d->vfb_scaledown + 1);
+		}
 
 		need_to_flush_x11 = 1;
 #endif
@@ -586,24 +607,32 @@ DEVICE_TICK(fb)
 #if defined(WITH_X11) || defined(WITH_SDL)
 	if (need_to_redraw_cursor) {
 		/*  Paint new cursor:  */
-		if (disp_x11_window(d)->cursor_on) {
-			disp(d)->display_redraw_cursor(cpu->machine,
-			    disp_x11_window(d)->fb_number);
-			disp_x11_window(d)->OLD_cursor_on = disp_x11_window(d)->cursor_on;
-			disp_x11_window(d)->OLD_cursor_x = disp_x11_window(d)->cursor_x;
-			disp_x11_window(d)->OLD_cursor_y = disp_x11_window(d)->cursor_y;
-			disp_x11_window(d)->OLD_cursor_xsize = disp_x11_window(d)->
-			    cursor_xsize;
-			disp_x11_window(d)->OLD_cursor_ysize = disp_x11_window(d)->
-			    cursor_ysize;
-			need_to_flush_x11 = 1;
+		if (disp_using_x11(d)) {
+			if (disp_x11_window(d)->cursor_on) {
+				disp(d)->display_redraw_cursor(cpu->machine,
+				    disp_x11_window(d)->fb_number);
+				disp_x11_window(d)->OLD_cursor_on = disp_x11_window(d)->cursor_on;
+				disp_x11_window(d)->OLD_cursor_x = disp_x11_window(d)->cursor_x;
+				disp_x11_window(d)->OLD_cursor_y = disp_x11_window(d)->cursor_y;
+				disp_x11_window(d)->OLD_cursor_xsize = disp_x11_window(d)->
+				    cursor_xsize;
+				disp_x11_window(d)->OLD_cursor_ysize = disp_x11_window(d)->
+				    cursor_ysize;
+				need_to_flush_x11 = 1;
+			}
 		}
 	}
 #endif
 
 #if defined(WITH_X11) || defined(WITH_SDL)
-	if (need_to_flush_x11)
-		XFlush(disp_x11_window(d)->x11_display);
+	if (need_to_flush_x11) {
+		if (disp_using_x11(d)) {
+			XFlush(disp_x11_window(d)->x11_display);
+		} else if (disp_using_sdl(d)) {
+			SDL_RenderPresent(disp_sdl_window(d)->renderer);
+		}
+	}
+
 #endif
 }
 
@@ -787,6 +816,7 @@ struct vfb_data *dev_fb_init(struct machine *machine, struct memory *mem,
 		/*  DECstation VFB02 (color)  */
 		d->xsize = 1024;  d->visible_xsize = 1024;
 		d->ysize = 1024;  d->visible_ysize = 864;
+		fprintf(stderr, "VFB_DEC_VFB02\n");
 		d->bit_depth = 8;
 		break;
 	case VFB_DEC_MAXINE:
@@ -815,7 +845,7 @@ struct vfb_data *dev_fb_init(struct machine *machine, struct memory *mem,
 
 	CHECK_ALLOCATION(d->framebuffer = (unsigned char *) malloc(size));
 
-	/*  Clear the framebuffer (all black pixels):  */
+	/*  Clear the framebuffern (all black pixels):  */
 	d->framebuffer_size = size;
 	memset(d->framebuffer, reverse_start? 255 : 0, size);
 
@@ -843,15 +873,20 @@ struct vfb_data *dev_fb_init(struct machine *machine, struct memory *mem,
 		d->display = mda_display(machine)->display_fb_init(d->fb_xsize,
 		    d->fb_ysize, d->title, mda_x11(machine).scaledown, machine);
 
-		switch (disp_x11_window(d)->x11_screen_depth) {
-		case 15: i = 2; break;
-		case 16: i = 4; break;
-		case 24: i = 6; break;
-		}
-		if (disp_x11_window(d)->fb_ximage->byte_order)
-			i ++;
-		if (d->vfb_scaledown > 1)
-			i += 8;
+		if (mda_using_x11(machine)) {
+			switch (disp_x11_window(d)->x11_screen_depth) {
+			case 15: i = 2; break;
+			case 16: i = 4; break;
+			case 24: i = 6; break;
+			}
+			if (disp_x11_window(d)->fb_ximage->byte_order)
+				i ++;
+			if (d->vfb_scaledown > 1)
+				i += 8;
+		} else
+			i = 6;	/* FIXME: select the redraw func that
+				 * matches the host platform */
+
 		d->redraw_func = redraw[i];
 	} else
 #endif

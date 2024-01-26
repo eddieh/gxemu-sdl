@@ -148,7 +148,7 @@ static void bt459_update_X_cursor(struct cpu *cpu, struct bt459_data *d)
 	 */
 
 #ifdef WITH_X11
-	if (mda_attached(cpu->machine) && disp_x11_window(d->vfb_data) != NULL) {
+	if (mda_attached(cpu->machine) && disp_using_x11(d->vfb_data) != NULL) {
 		for (y=0; y<=ymax; y++) {
 			for (x=0; x<=xmax; x+=4) {
 				struct x11_window *win = disp_x11_window(d->vfb_data);

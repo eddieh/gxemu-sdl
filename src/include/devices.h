@@ -250,8 +250,14 @@ int dev_fb_access(struct cpu *cpu, struct memory *mem, uint64_t relative_addr,
 struct vfb_data *dev_fb_init(struct machine *machine, struct memory *mem,
 	uint64_t baseaddr, int vfb_type, int visible_xsize, int visible_ysize,
 	int xsize, int ysize, int bit_depth, const char *name);
+
 #define disp(d)        (d->display)
-#define disp_x11_window(d) (d->display->x11_window)
+
+#define disp_using_x11(d)  (disp(d)->btype == display_backing_x11)
+#define disp_using_sdl(d)  (disp(d)->btype == display_backing_sdl)
+
+#define disp_x11_window(d) (disp(d)->x11_window)
+#define disp_sdl_window(d) (disp(d)->sdl_window)
 
 /*  dev_gt.c:  */
 #define	DEV_GT_LENGTH			0x1000

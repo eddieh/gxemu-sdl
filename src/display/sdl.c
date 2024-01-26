@@ -38,6 +38,7 @@
 #include "machine.h"
 #include "misc.h"
 #include "sdl.h"
+#include "display.h"
 
 
 #ifdef WITH_SDL
@@ -112,7 +113,38 @@ void sdl_redraw_cursor(struct machine *m, int i)
  */
 void sdl_redraw(struct machine *m, int i)
 {
+	struct display *disp;
+	struct sdl_window *fbwin;
 
+	if (i < 0)
+		return;
+	if (i >= mda(m).n_displays)
+		return;
+
+	disp = mda(m).displays[i];
+	fbwin = disp->sdl_window;
+
+#if 0
+	/* update texture from framebuffer*/
+	SDL_UpdateTexture(fbwin->texture, NULL,
+	    /* TODO: need ref `d' to vfb_data or directly to fb */
+	    d->framebuffer,
+	    d->fb_xsize * sizeof(unsigned char));
+#endif
+
+#if 0
+	/* update texture from surface */
+	SDL_UpdateTexture(fbwin->texture, NULL,
+	    fbwin->surface->pixels,
+	    fbwin->surface->pitch);
+#endif
+
+#if 0
+	SDL_RenderClear(fbwin->renderer);
+	SDL_RenderCopy(fbwin->renderer,
+	    fbwin->texture, NULL, NULL);
+	SDL_RenderPresent(fbwin->renderer);
+#endif
 }
 
 
@@ -185,7 +217,73 @@ void sdl_set_standard_properties(struct display *disp)
 struct display *sdl_fb_init(int xsize, int ysize, char *name,
 	int scaledown, struct machine *m)
 {
-	return NULL;
+	int x, y, fb_number = 0;
+	struct display *disp;
+	struct sdl_window *fbwin;
+	char *title;
+
+	fb_number = mda(m).n_displays - 1;
+
+	disp = mda(m).displays[fb_number];
+	CHECK_ALLOCATION(fbwin = disp->sdl_window =
+	    (struct sdl_window *) calloc(1, sizeof(struct sdl_window)));
+
+	title = name;
+
+	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+		debugmsg(SUBSYS_SDL, "fb_init", VERBOSITY_ERROR,
+		    "could not initialize SDL: %s\n", SDL_GetError());
+		exit(1);
+	}
+
+	fbwin->window = SDL_CreateWindow(title,
+	    SDL_WINDOWPOS_UNDEFINED,
+	    SDL_WINDOWPOS_UNDEFINED,
+	    xsize, ysize, 0);
+	if (!fbwin->window) {
+		debugmsg(SUBSYS_SDL, "fb_init", VERBOSITY_ERROR,
+		    "could not create window '%s': %s", title,
+		    SDL_GetError());
+		exit(1);
+	}
+
+	fbwin->renderer = SDL_CreateRenderer(fbwin->window, -1, 0);
+	if (!fbwin->renderer) {
+		debugmsg(SUBSYS_SDL, "fb_init", VERBOSITY_ERROR,
+		    "could not create renderer for window '%s': %s", title,
+		    SDL_GetError());
+		exit(1);
+	}
+
+#if 0
+	fbwin->surface = SDL_CreateRGBSurface(0, xsize, ysize, 8,
+	    0, 0, 0, 0);
+	/* fbwin->surface = SDL_CreateRGBSurfaceWithFormat(); */
+	if (!fbwin->surface) {
+		debugmsg(SUBSYS_SDL, "fb_init", VERBOSITY_ERROR,
+		    "could not create surface: %s",
+		    SDL_GetError());
+		exit(1);
+	}
+
+	fbwin->texture = SDL_CreateTexture(fbwin->renderer,
+	    SDL_PIXELFORMAT_ARGB8888,
+	    SDL_TEXTUREACCESS_STREAMING,
+	    xsize, ysize);
+	if (!fbwin->texture) {
+		debugmsg(SUBSYS_SDL, "fb_init", VERBOSITY_ERROR,
+		    "could not create texture: %s",
+		    SDL_GetError());
+		exit(1);
+	}
+#endif
+
+	/* paint it black */
+	SDL_SetRenderDrawColor(fbwin->renderer, 0, 0, 0, 255);
+	SDL_RenderClear(fbwin->renderer);
+	SDL_RenderPresent(fbwin->renderer);
+
+	return disp;
 }
 
 
@@ -200,7 +298,19 @@ struct display *sdl_fb_init(int xsize, int ysize, char *name,
  */
 static void sdl_check_events_machine(struct emul *emul, struct machine *m)
 {
+	SDL_Event event;
 
+	if (SDL_HasEvents(SDL_QUIT, SDL_USEREVENT)) {
+		while (SDL_PollEvent(&event)) {
+			switch (event.type) {
+			case SDL_QUIT:
+				exit(0);
+				break;
+			default:
+				break;
+			}
+		}
+	}
 }
 
 
@@ -211,7 +321,7 @@ static void sdl_check_events_machine(struct emul *emul, struct machine *m)
  */
 void sdl_check_event(struct emul *emul)
 {
-
+	sdl_check_events_machine(emul, NULL);
 }
 
 #endif	/*  WITH_SDL  */

@@ -36,38 +36,38 @@
  */
 
 
-#ifdef macro_put_pixel1
-#undef macro_put_pixel1
+#ifdef x11_set_color
+#undef x11_set_color
 #endif
 
-/*  Combine the color into an X11 long and display it:  */	\
-/*  TODO:  construct color in a more portable way:  */		\
+/*  Combine the color into an X11 long and display it:  */
+/*  TODO:  construct color in a more portable way:  */
 
 #ifdef FB_24
 #ifdef FB_BO
-#define macro_put_pixel1 color = (b << 16) + (g << 8) + r
+#define x11_set_color color = (b << 16) + (g << 8) + r
 #else
-#define macro_put_pixel1 color = (r << 16) + (g << 8) + b
+#define x11_set_color color = (r << 16) + (g << 8) + b
 #endif
 
 #else	/*  !24  */
 #ifdef FB_16
 #ifdef FB_BO
-#define macro_put_pixel1 color = ((b >> 3) << 11) + ((g >> 2) << 5) + (r >> 3)
+#define x11_set_color color = ((b >> 3) << 11) + ((g >> 2) << 5) + (r >> 3)
 #else
-#define macro_put_pixel1 color = ((r >> 3) << 11) + ((g >> 2) << 5) + (b >> 3)
+#define x11_set_color color = ((r >> 3) << 11) + ((g >> 2) << 5) + (b >> 3)
 #endif
 
 #else	/*  !16  */
 #ifdef FB_15
 #ifdef FB_BO
-#define macro_put_pixel1 color = ((b >> 3) << 10) + ((g >> 3) << 5) + (r >> 3)
+#define x11_set_color color = ((b >> 3) << 10) + ((g >> 3) << 5) + (r >> 3)
 #else
-#define macro_put_pixel1 color = ((r >> 3) << 10) + ((g >> 3) << 5) + (b >> 3)
+#define x11_set_color color = ((r >> 3) << 10) + ((g >> 3) << 5) + (b >> 3)
 #endif
 
 #else	/*  !15  */
-#define	macro_put_pixel1 color = disp_x11_window(d)->x11_graycolor[15 * 	\
+#define	x11_set_color color = disp_x11_window(d)->x11_graycolor[15 * 	\
 		(r + g + b) / (255 * 3)].pixel
 
 #endif	/*  !15  */
@@ -81,9 +81,24 @@
 #undef macro_put_pixel
 #endif
 
-#define macro_put_pixel		macro_put_pixel1;			\
-	if (x>=0 && x<d->fb_xsize && y>=0 && y<d->fb_ysize)		\
-		XPutPixel(disp_x11_window(d)->fb_ximage, x, y, color);	\
+#define x11_put_pixel x11_set_color;					      \
+	if (x>=0 && x<d->fb_xsize && y>=0 && y<d->fb_ysize)		      \
+		XPutPixel(disp_x11_window(d)->fb_ximage, x, y, color);
+
+
+
+#define sdl_set_color SDL_SetRenderDrawColor(disp_sdl_window(d)->renderer, r, g, b, 255)
+
+#define sdl_put_pixel sdl_set_color;					      \
+	if (x >= 0 && x < d->fb_xsize && y >= 0 && y < d->fb_ysize)	      \
+		SDL_RenderDrawPoint(disp_sdl_window(d)->renderer, x, y);
+
+
+#define macro_put_pixel if (disp_using_x11(d)) {			      \
+		x11_put_pixel;						      \
+	} else if (disp_using_sdl(d)) {					      \
+		sdl_put_pixel;						      \
+	}
 
 
 void REDRAW(struct vfb_data *d, int addr, int len)

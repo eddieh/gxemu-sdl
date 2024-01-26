@@ -48,6 +48,8 @@ struct sdl_window;
 #define	CURSOR_MAXX			64
 
 struct display {
+	int btype;		/* backing type: x11 or sdl */
+
 	union {
 		struct x11_window *x11_window;
 		struct sdl_window *sdl_window;
