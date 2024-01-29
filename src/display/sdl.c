@@ -40,6 +40,8 @@
 #include "sdl.h"
 #include "display.h"
 
+#undef CTRL
+#define CTRL(x) ((x) & 0x1F)
 
 #ifdef WITH_SDL
 
@@ -246,6 +248,7 @@ struct display *sdl_fb_init(int xsize, int ysize, char *name,
 		    SDL_GetError());
 		exit(1);
 	}
+	SDL_SetWindowData(fbwin->window, "machine", m);
 
 	fbwin->renderer = SDL_CreateRenderer(fbwin->window, -1, 0);
 	if (!fbwin->renderer) {
@@ -286,6 +289,108 @@ struct display *sdl_fb_init(int xsize, int ysize, char *name,
 	return disp;
 }
 
+static void
+sdl_handle_window_event(struct emul *emul,
+    struct machine *m, SDL_Event *event)
+{
+}
+
+static void
+sdl_handle_mouse_motion_event(struct emul *emul,
+    struct machine *m, SDL_Event *event)
+{
+}
+
+static void
+sdl_handle_mouse_button_event(struct emul *emul,
+    struct machine *m, SDL_Event *event)
+{
+}
+
+static void
+sdl_handle_mouse_wheel_event(struct emul *emul,
+    struct machine *m, SDL_Event *event)
+{
+}
+
+static void
+sdl_handle_key_event(struct emul *emul,
+    struct machine *m, SDL_KeyboardEvent *event)
+{
+	Uint32 windowID;
+	SDL_Window *win;
+	SDL_Keycode kc;
+	SDL_Keymod kmod;
+	int pressed;
+
+#if 0
+	char text[32];
+	char *kn;
+#endif
+
+	windowID = event->windowID;
+	win = SDL_GetWindowFromID(windowID);
+	m = (struct machine *)SDL_GetWindowData(win, "machine");
+
+	kc = event->keysym.sym;
+	kmod = event->keysym.mod;
+	pressed = event->type == SDL_KEYDOWN;
+
+#if 0
+	kn = SDL_GetKeyName(kc);
+	strcpy(text, kn);
+	fprintf(stderr, "%d[%s] => %s\n", kc, text,
+	     pressed ? "Down" : "Up");
+	fflush(stderr);
+#endif
+
+	if (pressed)
+		return;
+
+	if (kmod & KMOD_CTRL) {
+		if (kc >= 32 && kc <= 127)
+			console_makeavail(m->main_console_handle,
+			    CTRL(kc));
+	}
+
+	switch (kc) {
+	case SDLK_BACKSPACE:
+		console_makeavail(m->main_console_handle,
+		    SDLK_BACKSPACE);
+		break;
+	case SDLK_TAB:
+		console_makeavail(m->main_console_handle,
+		    SDLK_TAB);
+		break;
+	case SDLK_RETURN:
+		console_makeavail(m->main_console_handle,
+		    SDLK_RETURN);
+		break;
+	case SDLK_ESCAPE:
+		console_makeavail(m->main_console_handle,
+		    SDLK_ESCAPE);
+		break;
+	default:
+		break;
+	}
+}
+
+static void
+sdl_handle_text_input_event(struct emul *emul,
+    struct machine *m, SDL_TextInputEvent *event)
+{
+	Uint32 windowID;
+	SDL_Window *win;
+	char text[32];
+
+	windowID = event->windowID;
+	win = SDL_GetWindowFromID(windowID);
+	m = (struct machine *)SDL_GetWindowData(win, "machine");
+
+	strcpy(text, event->text);
+	for (int i = 0; i < strlen(text); i++)
+		console_makeavail(m->main_console_handle, text[i]);
+}
 
 /*
  *  sdl_check_events_machine():
@@ -300,17 +405,36 @@ static void sdl_check_events_machine(struct emul *emul, struct machine *m)
 {
 	SDL_Event event;
 
-	if (SDL_HasEvents(SDL_QUIT, SDL_USEREVENT)) {
-		while (SDL_PollEvent(&event)) {
-			switch (event.type) {
-			case SDL_QUIT:
-				exit(0);
-				break;
-			default:
-				break;
-			}
+	while (SDL_PollEvent(&event)) {
+		switch (event.type) {
+		case SDL_QUIT:
+			exit(0);
+			break;
+		case SDL_WINDOWEVENT:
+			sdl_handle_window_event(emul, m, &event);
+			break;
+		case SDL_MOUSEMOTION:
+			sdl_handle_mouse_motion_event(emul, m, &event);
+			break;
+		case SDL_MOUSEBUTTONDOWN:
+		case SDL_MOUSEBUTTONUP:
+			sdl_handle_mouse_button_event(emul, m, &event);
+			break;
+		case SDL_MOUSEWHEEL:
+			sdl_handle_mouse_wheel_event(emul, m, &event);
+			break;
+		case SDL_KEYDOWN:
+		case SDL_KEYUP:
+			sdl_handle_key_event(emul, m, &event);
+			break;
+		case SDL_TEXTINPUT:
+			sdl_handle_text_input_event(emul, m, &event);
+			break;
+		default:
+			break;
 		}
 	}
+
 }
 
 
