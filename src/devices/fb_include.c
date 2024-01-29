@@ -35,7 +35,6 @@
  *  (Default is to fallback to grayscale.)
  */
 
-
 #ifdef x11_set_color
 #undef x11_set_color
 #endif
@@ -94,10 +93,18 @@
 		SDL_RenderDrawPoint(disp_sdl_window(d)->renderer, x, y);
 
 
+#define sdl_put_pixel_surface						      \
+	if (x >= 0 && x < d->fb_xsize && y >= 0 && y < d->fb_ysize) {	      \
+	uint32_t *pixels = disp_sdl_window(d)->surface->pixels;		      \
+	size_t surf_addr = (y * disp_sdl_window(d)->surface->w + x) * 1;      \
+	x11_set_color;							      \
+	pixels[surf_addr] = color; }
+
+
 #define macro_put_pixel if (disp_using_x11(d)) {			      \
 		x11_put_pixel;						      \
 	} else if (disp_using_sdl(d)) {					      \
-		sdl_put_pixel;						      \
+		sdl_put_pixel_surface;					      \
 	}
 
 

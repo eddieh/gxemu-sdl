@@ -61,6 +61,10 @@
 #include <X11/Xutil.h>
 #endif
 
+#ifdef WITH_SDL
+#include <SDL2/SDL.h>
+#endif
+
 
 #define	FB_TICK_SHIFT		19
 
@@ -595,6 +599,14 @@ DEVICE_TICK(fb)
 			    d->update_y1/d->vfb_scaledown,
 			    (d->update_x2 - d->update_x1)/d->vfb_scaledown + 1,
 			    (d->update_y2 - d->update_y1)/d->vfb_scaledown + 1);
+		} else if (disp_using_sdl(d)) {
+			SDL_UpdateTexture(disp_sdl_window(d)->texture, NULL,
+			    disp_sdl_window(d)->surface->pixels,
+			    disp_sdl_window(d)->surface->pitch);
+
+			SDL_RenderClear(disp_sdl_window(d)->renderer);
+			SDL_RenderCopy(disp_sdl_window(d)->renderer,
+			    disp_sdl_window(d)->texture, NULL, NULL);
 		}
 
 		need_to_flush_x11 = 1;

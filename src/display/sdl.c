@@ -126,27 +126,15 @@ void sdl_redraw(struct machine *m, int i)
 	disp = mda(m).displays[i];
 	fbwin = disp->sdl_window;
 
-#if 0
-	/* update texture from framebuffer*/
-	SDL_UpdateTexture(fbwin->texture, NULL,
-	    /* TODO: need ref `d' to vfb_data or directly to fb */
-	    d->framebuffer,
-	    d->fb_xsize * sizeof(unsigned char));
-#endif
-
-#if 0
 	/* update texture from surface */
 	SDL_UpdateTexture(fbwin->texture, NULL,
 	    fbwin->surface->pixels,
 	    fbwin->surface->pitch);
-#endif
 
-#if 0
 	SDL_RenderClear(fbwin->renderer);
 	SDL_RenderCopy(fbwin->renderer,
 	    fbwin->texture, NULL, NULL);
 	SDL_RenderPresent(fbwin->renderer);
-#endif
 }
 
 
@@ -258,16 +246,24 @@ struct display *sdl_fb_init(int xsize, int ysize, char *name,
 		exit(1);
 	}
 
-#if 0
-	fbwin->surface = SDL_CreateRGBSurface(0, xsize, ysize, 8,
-	    0, 0, 0, 0);
-	/* fbwin->surface = SDL_CreateRGBSurfaceWithFormat(); */
+	fbwin->surface = SDL_CreateRGBSurface(0, xsize, ysize, 32,
+	    0x00FF0000,
+	    0x0000FF00,
+	    0x000000FF,
+	    0x00000000);
 	if (!fbwin->surface) {
 		debugmsg(SUBSYS_SDL, "fb_init", VERBOSITY_ERROR,
 		    "could not create surface: %s",
 		    SDL_GetError());
 		exit(1);
 	}
+#if 0
+	fprintf(stderr, "w=%d, h=%d, pitch=%d, bitdepth=%d, bytedepth=%d\n",
+	    fbwin->surface->w, fbwin->surface->h,
+	    fbwin->surface->pitch,
+	    fbwin->surface->format->BitsPerPixel,
+	    fbwin->surface->format->BytesPerPixel);
+#endif
 
 	fbwin->texture = SDL_CreateTexture(fbwin->renderer,
 	    SDL_PIXELFORMAT_ARGB8888,
@@ -279,7 +275,6 @@ struct display *sdl_fb_init(int xsize, int ysize, char *name,
 		    SDL_GetError());
 		exit(1);
 	}
-#endif
 
 	/* paint it black */
 	SDL_SetRenderDrawColor(fbwin->renderer, 0, 0, 0, 255);
