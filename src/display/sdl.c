@@ -48,51 +48,8 @@
 static bool left_ctrl = false;
 static bool left_alt = false;
 
-static struct display *grabbed = NULL;
-
-static bool mouseExplicityMoved = false;
-static int mouseXbeforeGrab = 0;
-static int mouseYbeforeGrab = 0;
-static int mouseXofLastEvent = 0;
-static int mouseYofLastEvent = 0;
-
-static bool mouseCursorHidden = false;
-
-
-static void sdl_unhide_cursor()
-{
-
-}
-
-
-static void sdl_hide_cursor()
-{
-
-}
-
-
-static void setMousePointerCoordinates(struct display *disp,
-    int x, int y)
-{
-
-}
-
-
-static void mouseMouseToCenterOfScreen(struct display *disp)
-{
-
-}
-
-static void grab(struct display *disp)
-{
-
-}
-
-
-static void ungrab()
-{
-
-}
+static int lastX = 0;
+static int lastY = 0;
 
 
 /*
@@ -237,6 +194,7 @@ struct display *sdl_fb_init(int xsize, int ysize, char *name,
 		exit(1);
 	}
 	SDL_SetWindowData(fbwin->window, "machine", m);
+	SDL_SetWindowData(fbwin->window, "fbnum", fb_number);
 
 	fbwin->renderer = SDL_CreateRenderer(fbwin->window, -1, 0);
 	if (!fbwin->renderer) {
@@ -281,25 +239,86 @@ struct display *sdl_fb_init(int xsize, int ysize, char *name,
 	SDL_RenderClear(fbwin->renderer);
 	SDL_RenderPresent(fbwin->renderer);
 
+	lastX = xsize / 2;
+	lastY = ysize / 2;
+	SDL_SetRelativeMouseMode(true);
+
 	return disp;
 }
 
 static void
 sdl_handle_window_event(struct emul *emul,
-    struct machine *m, SDL_Event *event)
+    struct machine *m, SDL_WindowEvent *event)
 {
+	Uint32 windowID;
+	SDL_Window *win;
+
+	windowID = event->windowID;
+	win = SDL_GetWindowFromID(windowID);
+
+	switch (event->event) {
+	case SDL_WINDOWEVENT_SHOWN:
+		break;
+	case SDL_WINDOWEVENT_HIDDEN:
+		break;
+	case SDL_WINDOWEVENT_EXPOSED:
+		break;
+	case SDL_WINDOWEVENT_ENTER:
+		break;
+        case SDL_WINDOWEVENT_LEAVE:
+		break;
+	case SDL_WINDOWEVENT_FOCUS_GAINED:
+		SDL_SetRelativeMouseMode(true);
+		break;
+	case SDL_WINDOWEVENT_FOCUS_LOST:
+		SDL_SetRelativeMouseMode(false);
+		break;
+	default:
+		break;
+	}
 }
 
 static void
 sdl_handle_mouse_motion_event(struct emul *emul,
-    struct machine *m, SDL_Event *event)
+    struct machine *m, SDL_MouseMotionEvent *event)
 {
+	Uint32 windowID;
+	SDL_Window *win;
+	int x, y, dx, dy;
+	int fbnum;
+
+	windowID = event->windowID;
+	win = SDL_GetWindowFromID(windowID);
+	fbnum = (int)SDL_GetWindowData(win, "fbnum");
+
+	x = event->x;
+	y = event->y;
+
+	dx = event->xrel;
+	dy = event->yrel;
+
+	lastX = x;
+	lastY = y;
+
+	/* 	fprintf(stderr, "fb:%d mouse (%d, %d) (dx:%d, dy:%d)\n", */
+	/* 	    fbnum, x, y, dx, dy); */
+	if (SDL_GetRelativeMouseMode())
+		console_mouse_coordinate_update(dx, dy, fbnum);
 }
 
 static void
 sdl_handle_mouse_button_event(struct emul *emul,
-    struct machine *m, SDL_Event *event)
+    struct machine *m, SDL_MouseButtonEvent *event)
 {
+	int button, pressed;
+
+	button = event->button;
+	pressed = event->state == SDL_PRESSED;
+
+	if (!SDL_GetRelativeMouseMode())
+		SDL_SetRelativeMouseMode(true);
+	else
+		console_mouse_button(button, pressed);
 }
 
 static void
@@ -339,14 +358,29 @@ sdl_handle_key_event(struct emul *emul,
 	fflush(stderr);
 #endif
 
-	if (pressed)
+	if (pressed) {
+		if (kmod & KMOD_LCTRL)
+			left_ctrl = true;
+		if (kmod & KMOD_LALT)
+			left_alt = true;
+		if (left_ctrl && left_alt) {
+			SDL_SetRelativeMouseMode(false);
+			left_ctrl = false;
+			left_alt = false;
+		}
 		return;
+	}
 
 	if (kmod & KMOD_CTRL) {
 		if (kc >= 32 && kc <= 127)
 			console_makeavail(m->main_console_handle,
 			    CTRL(kc));
 	}
+
+	if (kmod & KMOD_LCTRL)
+		left_ctrl = false;
+	if (kmod & KMOD_LALT)
+		left_alt = false;
 
 	switch (kc) {
 	case SDLK_BACKSPACE:
@@ -388,17 +422,14 @@ sdl_handle_text_input_event(struct emul *emul,
 }
 
 /*
- *  sdl_check_events_machine():
+ *  sdl_check_event():
  *
- *  Check for SDL events on a specific machine.
- *
- *  TODO:  Yuck! This has to be rewritten. Each display should be checked,
- *         and _then_ only those windows that are actually exposed should
- *         be redrawn!
+ *  Check for SDL events.
  */
-static void sdl_check_events_machine(struct emul *emul, struct machine *m)
+void sdl_check_event(struct emul *emul)
 {
 	SDL_Event event;
+	struct machine *m = NULL;
 
 	while (SDL_PollEvent(&event)) {
 		switch (event.type) {
@@ -429,18 +460,6 @@ static void sdl_check_events_machine(struct emul *emul, struct machine *m)
 			break;
 		}
 	}
-
-}
-
-
-/*
- *  sdl_check_event():
- *
- *  Check for SDL events.
- */
-void sdl_check_event(struct emul *emul)
-{
-	sdl_check_events_machine(emul, NULL);
 }
 
 #endif	/*  WITH_SDL  */
